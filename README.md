@@ -10,6 +10,13 @@
 
 LedgerAI is an AI platform designed to help accountants, business owners, and finance teams analyze financial data faster and make smarter decisions.
 
+## 💡 Why LedgerAI?
+
+Traditional accounting software shows numbers.
+
+**LedgerAI explains them.**
+
+Instead of manually searching through spreadsheets, LedgerAI analyzes financial data, detects key metrics, and provides AI-powered insights to help businesses make smarter decisions.
 ---
 
 ## ✨ Features
