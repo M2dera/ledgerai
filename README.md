@@ -1,5 +1,11 @@
 # LedgerAI
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
+![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4-38BDF8?logo=tailwindcss)
+![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)
+
 > AI-powered Financial Intelligence Platform
 
 LedgerAI is an AI platform designed to help accountants, business owners, and finance teams analyze financial data faster and make smarter decisions.

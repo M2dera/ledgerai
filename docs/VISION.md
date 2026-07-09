@@ -20,3 +20,4 @@ Transform accounting from spreadsheets into intelligent decisions.
 Don't build a product people admire.
 
 Build one they can't work without.
+Our goal is not to build another accounting tool. Our goal is to build the AI accountant that every business trusts.
