@@ -17,6 +17,9 @@ Traditional accounting software shows numbers.
 **LedgerAI explains them.**
 
 Instead of manually searching through spreadsheets, LedgerAI analyzes financial data, detects key metrics, and provides AI-powered insights to help businesses make smarter decisions.
+## 📸 Dashboard Preview
+
+![LedgerAI Dashboard](./public/dashboard.png)
 ---
 
 ## ✨ Features
