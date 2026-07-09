@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LedgerAI
 
-## Getting Started
+> AI-powered Financial Intelligence Platform
 
-First, run the development server:
+LedgerAI is an AI platform designed to help accountants, business owners, and finance teams analyze financial data faster and make smarter decisions.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 📄 Excel Upload
+- 📊 Financial Dashboard
+- 💰 Revenue, Expenses & Profit Detection
+- 🤖 AI Financial Insights
+- 📈 Smart Analytics
+- 📑 Financial Reports
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🛠 Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- XLSX
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🚀 Roadmap
 
-## Deploy on Vercel
+### ✅ Sprint 1
+- Project setup
+- GitHub
+- Excel Reader
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### ✅ Sprint 2
+- Dashboard
+- Sidebar
+- KPI Cards
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 🚧 Sprint 3
+- Smart Financial Engine
+- AI Insights
+
+### ⏳ Coming Soon
+
+- Charts
+- AI Chat
+- PDF Reports
+- Multi-company Support
+- Authentication
+- Team Collaboration
+
+---
+
+## 🎯 Vision
+
+Build the smartest AI platform for accountants.
+
+---
+
+## 📌 Status
+
+Currently under active development.
