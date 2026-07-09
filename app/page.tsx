@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import FileUpload from "../components/upload/FileUpload";
 import { readExcel } from "../lib/excel/reader";
-
+import { analyzeData } from "../lib/analysis/analyzer";
+import AnalysisCard from "@/components/dashboard/AnalysisCard";
 export default function Home() {
-  async function handleFileSelect(file: File) {
-    const data = await readExcel(file);
-    console.log(data);
-    alert(`Excel rows loaded: ${data.length}`);
-  }
+  const [analysis, setAnalysis] = useState<any>(null);
+ async function handleFileSelect(file: File) {
+  const data = await readExcel(file);
+  const result = analyzeData(data);
+
+  console.log(result);
+  setAnalysis(result);
+}
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
@@ -22,7 +27,32 @@ export default function Home() {
       </p>
 
       <FileUpload onFileSelect={handleFileSelect} />
+{analysis && (
+  <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-5xl">
+    <AnalysisCard
+      title="Rows"
+      value={analysis.totalRows}
+    />
 
+    <AnalysisCard
+      title="Revenue"
+      value={analysis.revenue ? "Found" : "Not Found"}
+      status={analysis.revenue ? "success" : "danger"}
+    />
+
+    <AnalysisCard
+      title="Expenses"
+      value={analysis.expenses ? "Found" : "Not Found"}
+      status={analysis.expenses ? "success" : "danger"}
+    />
+
+    <AnalysisCard
+      title="Profit"
+      value={analysis.profit ? "Found" : "Not Found"}
+      status={analysis.profit ? "success" : "danger"}
+    />
+  </div>
+)}
       <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl">
         <div className="bg-zinc-900 p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-2">AI Analysis</h2>

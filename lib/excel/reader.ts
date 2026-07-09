@@ -1,6 +1,8 @@
 import * as XLSX from "xlsx";
 
-export async function readExcel(file: File) {
+export async function readExcel(
+  file: File
+): Promise<Record<string, unknown>[]> {
   const data = await file.arrayBuffer();
 
   const workbook = XLSX.read(data);
@@ -9,7 +11,5 @@ export async function readExcel(file: File) {
 
   const worksheet = workbook.Sheets[sheetName];
 
-  const json = XLSX.utils.sheet_to_json(worksheet);
-
-  return json;
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
 }
