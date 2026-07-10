@@ -11,20 +11,26 @@ import { analyzeData } from "@/lib/analysis/analyzer";
 import { generateInsights } from "@/lib/analysis/insights";
 import FinancialChart from "@/components/charts/FinancialChart";
 import FinancialRatios from "@/components/dashboard/FinancialRatios";
+import TimeSavedCard from "@/components/dashboard/TimeSavedCard";
+import SmartAlerts from "@/components/dashboard/SmartAlerts";
+import { generateAlerts } from "@/lib/analysis/alerts";
 
 export default function DashboardPage() {
   const [analysis, setAnalysis] = useState<any>(null);
   const [insights, setInsights] = useState<string[]>([]);
+const [alerts, setAlerts] = useState<any[]>([]);
 
   async function handleFileSelect(file: File) {
     const data = await readExcel(file);
     const result = analyzeData(data);
     const generatedInsights = generateInsights(result);
+    const generatedAlerts = generateAlerts(result);
 
     console.log("Analysis Result:", result);
 
     setAnalysis(result);
     setInsights(generatedInsights);
+    setAlerts(generatedAlerts);
   }
 
   return (
@@ -66,6 +72,9 @@ export default function DashboardPage() {
                   status={analysis.profit >= 0 ? "success" : "danger"}
                 />
               </div>
+              {alerts.length > 0 && (
+  <SmartAlerts alerts={alerts} />
+)}
               <FinancialChart
   revenue={analysis.revenue}
   expenses={analysis.expenses}
@@ -76,7 +85,9 @@ export default function DashboardPage() {
   expenses={analysis.expenses}
   profit={analysis.profit}
 />
-
+<TimeSavedCard
+  rows={analysis.totalRows}
+/>
               {insights.length > 0 && (
                 <InsightsPanel
                   insights={insights}
