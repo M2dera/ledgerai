@@ -5,10 +5,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import FileUpload from "@/components/upload/FileUpload";
 import AnalysisCard from "@/components/dashboard/AnalysisCard";
 import PageHeader from "@/components/common/PageHeader";
+import InsightsPanel from "@/components/dashboard/InsightsPanel";
 import { readExcel } from "@/lib/excel/reader";
 import { analyzeData } from "@/lib/analysis/analyzer";
-import InsightsPanel from "@/components/dashboard/InsightsPanel";
 import { generateInsights } from "@/lib/analysis/insights";
+import FinancialChart from "@/components/charts/FinancialChart";
+import FinancialRatios from "@/components/dashboard/FinancialRatios";
 
 export default function DashboardPage() {
   const [analysis, setAnalysis] = useState<any>(null);
@@ -40,8 +42,11 @@ export default function DashboardPage() {
 
           {analysis && (
             <>
-              <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <AnalysisCard title="Rows" value={analysis.totalRows} />
+              <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4">
+                <AnalysisCard
+                  title="Rows"
+                  value={analysis.totalRows}
+                />
 
                 <AnalysisCard
                   title="Revenue"
@@ -61,8 +66,25 @@ export default function DashboardPage() {
                   status={analysis.profit >= 0 ? "success" : "danger"}
                 />
               </div>
+              <FinancialChart
+  revenue={analysis.revenue}
+  expenses={analysis.expenses}
+  profit={analysis.profit}
+/>
+<FinancialRatios
+  revenue={analysis.revenue}
+  expenses={analysis.expenses}
+  profit={analysis.profit}
+/>
 
-              {insights.length > 0 && <InsightsPanel insights={insights} />}
+              {insights.length > 0 && (
+                <InsightsPanel
+                  insights={insights}
+                  revenue={analysis.revenue}
+                  expenses={analysis.expenses}
+                  profit={analysis.profit}
+                />
+              )}
             </>
           )}
         </div>
