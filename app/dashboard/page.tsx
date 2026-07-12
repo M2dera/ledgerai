@@ -14,6 +14,7 @@ import FinancialRatios from "@/components/dashboard/FinancialRatios";
 import TimeSavedCard from "@/components/dashboard/TimeSavedCard";
 import SmartAlerts from "@/components/dashboard/SmartAlerts";
 import { generateAlerts } from "@/lib/analysis/alerts";
+import { setFinancialData } from "@/lib/store/financialStore";
 
 export default function DashboardPage() {
   const [analysis, setAnalysis] = useState<any>(null);
@@ -23,6 +24,9 @@ const [alerts, setAlerts] = useState<any[]>([]);
   async function handleFileSelect(file: File) {
     const data = await readExcel(file);
     const result = analyzeData(data);
+
+    setFinancialData(result);
+    
     const generatedInsights = generateInsights(result);
     const generatedAlerts = generateAlerts(result);
 
