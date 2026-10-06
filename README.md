@@ -6,7 +6,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-4-38BDF8?logo=tailwindcss)
 ![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen)
 
-> AI-powered Financial Intelligence Platform
+> Financial analysis and deterministic insights for business data
 
 LedgerAI is an AI platform designed to help accountants, business owners, and finance teams analyze financial data faster and make smarter decisions.
 
@@ -16,7 +16,7 @@ Traditional accounting software shows numbers.
 
 **LedgerAI explains them.**
 
-Instead of manually searching through spreadsheets, LedgerAI analyzes financial data, detects key metrics, and provides AI-powered insights to help businesses make smarter decisions.
+Instead of manually searching through spreadsheets, LedgerAI analyzes supported financial rows, detects key metrics, and explains deterministic observations. AI-generated analysis is future functionality.
 ## 📸 Dashboard Preview
 
 ![LedgerAI Dashboard](./public/dashboard.png)
@@ -27,7 +27,7 @@ Instead of manually searching through spreadsheets, LedgerAI analyzes financial 
 - 📄 Excel Upload
 - 📊 Financial Dashboard
 - 💰 Revenue, Expenses & Profit Detection
-- 🤖 AI Financial Insights
+- Deterministic Financial Insights
 - 📈 Smart Analytics
 - 📑 Financial Reports
 
@@ -62,7 +62,7 @@ Instead of manually searching through spreadsheets, LedgerAI analyzes financial 
 ### ⏳ Coming Soon
 
 - Charts
-- AI Chat
+- Dataset Question and Answering (deterministic; no AI service connected)
 - PDF Reports
 - Multi-company Support
 - Authentication

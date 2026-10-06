@@ -34,7 +34,7 @@ export default function FinancialRatios({
           </span>
 
           <span className="text-green-400 font-bold">
-            {profitMargin.toFixed(1)}%
+            {revenue > 0 ? `${profitMargin.toFixed(1)}%` : "—"}
           </span>
         </div>
 
@@ -42,7 +42,7 @@ export default function FinancialRatios({
           <div
             className="h-4 rounded-full bg-green-500 transition-all duration-700"
             style={{
-              width: `${Math.min(profitMargin,100)}%`,
+              width: `${Math.max(0, Math.min(profitMargin, 100))}%`,
             }}
           />
         </div>
@@ -57,7 +57,7 @@ export default function FinancialRatios({
           </span>
 
           <span className="text-red-400 font-bold">
-            {expenseRatio.toFixed(1)}%
+            {revenue > 0 ? `${expenseRatio.toFixed(1)}%` : "—"}
           </span>
         </div>
 

@@ -5,87 +5,34 @@ import Sidebar from "@/components/layout/Sidebar";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
+import FileUpload from "@/components/upload/FileUpload";
+import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { answerFinancialQuestion } from "@/lib/analysis/chat";
 
-type Message = {
-  sender: "user" | "ai";
-  text: string;
-};
+type Message = { sender: "user" | "ai"; text: string };
 
 export default function ChatPage() {
+  const { dataset } = useLedgerData();
   const [messages, setMessages] = useState<Message[]>([
-    {
-      sender: "ai",
-      text: "Hello, Meshal 👋 Ask me anything about your financial data.",
-    },
+    { sender: "ai", text: "I can answer questions using figures calculated from your current uploaded dataset. No AI service is connected." },
   ]);
 
-  function getAIResponse(message: string) {
-  const question = message.toLowerCase();
-
-  if (question.includes("profit")) {
-    return "Profit may have decreased because expenses increased faster than revenue. The main areas to review are marketing, operating costs, and cost of goods sold.";
+  function handleSend(message: string) {
+    const response = answerFinancialQuestion(message, dataset);
+    setMessages((current) => [...current, { sender: "user", text: message }, { sender: "ai", text: response }]);
   }
-
-  if (question.includes("expense")) {
-    return "Your highest expenses are likely concentrated in operating costs, marketing, and payroll. A detailed category breakdown will help identify the biggest cost drivers.";
-  }
-
-  if (question.includes("revenue")) {
-    return "Revenue performance appears positive overall. The next step is to compare periods and identify which products, services, or months contributed most to growth.";
-  }
-
-  if (question.includes("compare") || question.includes("last month")) {
-    return "Compared with last month, LedgerAI will review changes in revenue, expenses, profit, and cash flow, then highlight the most important movements.";
-  }
-
-  return "I understand your question. Once your financial file is connected to the chat, I will analyze the data and provide a specific answer based on your numbers.";
-}
-
-function handleSend(message: string) {
-  const aiResponse = getAIResponse(message);
-
-  setMessages((current) => [
-    ...current,
-    {
-      sender: "user",
-      text: message,
-    },
-    {
-      sender: "ai",
-      text: "Thinking...",
-    },
-  ]);
-
-  setTimeout(() => {
-    setMessages((current) => {
-      const updated = [...current];
-      updated[updated.length - 1] = {
-        sender: "ai",
-        text: aiResponse,
-      };
-      return updated;
-    });
-  }, 1000);
-}
 
   return (
     <div className="flex min-h-screen bg-black text-white">
       <Sidebar />
-
       <main className="flex-1 p-10">
         <div className="mx-auto max-w-5xl">
-          <h1 className="mb-2 text-4xl font-bold">
-            Ask Ledger<span className="text-green-400">AI</span>
-          </h1>
-
-          <p className="mb-8 text-zinc-400">
-            Chat with your financial data.
-          </p>
-
+          <h1 className="mb-2 text-4xl font-bold">Ledger<span className="text-green-400">AI</span> Data Assistant</h1>
+          <p className="mb-8 text-zinc-400">Deterministic answers calculated from your uploaded data; no AI service is connected.</p>
+          {!dataset && <div className="mb-6"><FileUpload /></div>}
+          {dataset && <p className="mb-6 text-sm text-zinc-400">Using {dataset.uploadedFile.name} · {dataset.summary.rowsAnalyzed} rows analyzed ({dataset.summary.quality} quality).</p>}
           <SuggestedQuestions onSelect={handleSend} />
-
           <ChatWindow messages={messages} />
-
           <ChatInput onSend={handleSend} />
         </div>
       </main>
