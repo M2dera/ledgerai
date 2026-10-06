@@ -11,17 +11,21 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { FinancialUnit } from "@/lib/financial/types";
+import { formatFinancialAmount } from "@/lib/financial/unit";
 
 type FinancialChartProps = {
   revenue: number;
   expenses: number;
   profit: number;
+  unit: FinancialUnit;
 };
 
 export default function FinancialChart({
   revenue,
   expenses,
   profit,
+  unit,
 }: FinancialChartProps) {
   const data = [
     {
@@ -81,7 +85,7 @@ export default function FinancialChart({
 
             <Tooltip
               formatter={(value, _name, item) => [
-                `${Number(value).toLocaleString()} KD`,
+                formatFinancialAmount(Number(value), unit),
                 item.payload.name,
               ]}
               contentStyle={{
@@ -110,7 +114,7 @@ export default function FinancialChart({
   dataKey="value"
   position="top"
   formatter={(value) =>
-    `${Number(value).toLocaleString()} KD`
+    formatFinancialAmount(Number(value), unit)
   }
   fill="#ffffff"
 />

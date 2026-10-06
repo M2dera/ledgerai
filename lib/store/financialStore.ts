@@ -1,7 +1,7 @@
 import type { FinancialDataset } from "@/lib/financial/types";
 
 const STORAGE_KEY = "ledgerai-financial-data";
-const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -16,7 +16,14 @@ function isOptionalFinite(value: unknown): boolean {
 }
 
 export function isFinancialDataset(value: unknown): value is FinancialDataset {
-  if (!isRecord(value) || !isRecord(value.uploadedFile) || !isRecord(value.summary)) return false;
+  if (!isRecord(value) || !isRecord(value.uploadedFile) || !isRecord(value.summary) || !isRecord(value.currency)) return false;
+  const currency = value.currency;
+  if (!(["known", "unknown", "ambiguous"].includes(String(currency.status)) &&
+    ["header", "cell", "unknown"].includes(String(currency.source)) &&
+    (currency.code === null || typeof currency.code === "string") && Array.isArray(currency.candidates) &&
+    currency.candidates.every((candidate) => typeof candidate === "string") &&
+    (currency.status !== "known" || typeof currency.code === "string") &&
+    (currency.status !== "ambiguous" || currency.code === null))) return false;
   const file = value.uploadedFile;
   const summary = value.summary;
   if (

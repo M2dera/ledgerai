@@ -54,7 +54,7 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const insights = useMemo(() => dataset ? generateInsights(dataset.summary) : [], [dataset]);
+  const insights = useMemo(() => dataset ? generateInsights(dataset.summary, dataset.currency) : [], [dataset]);
   const alerts = useMemo(() => dataset ? generateAlerts(dataset.summary) : [], [dataset]);
   const value = useMemo(() => ({ dataset, insights, alerts, uploadFeedback, uploadFile }), [dataset, insights, alerts, uploadFeedback, uploadFile]);
 

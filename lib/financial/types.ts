@@ -17,6 +17,13 @@ export type UploadedFile = {
   uploadedAt: string;
 };
 
+export type FinancialUnit = {
+  status: "known" | "unknown" | "ambiguous";
+  code: string | null;
+  source: "header" | "cell" | "unknown";
+  candidates: string[];
+};
+
 export type FinancialRow = {
   rowNumber: number;
   date?: string;
@@ -64,12 +71,35 @@ export type DetectedColumns = Partial<Record<FinancialField, string>>;
 
 export type FinancialDataset = {
   uploadedFile: UploadedFile;
+  currency: FinancialUnit;
   columns: string[];
   detectedColumns: DetectedColumns;
   rows: FinancialRow[];
   summary: FinancialSummary;
   warnings: string[];
   errors: string[];
+};
+
+export type FinancialPeriod = {
+  id: string;
+  label: string;
+  year: number;
+  month: number;
+  revenue: number | null;
+  expenses: number | null;
+  profit: number | null;
+  rowsAnalyzed: number;
+};
+
+export type PeriodComparison = {
+  earlier: FinancialPeriod;
+  later: FinancialPeriod;
+  revenueDelta: number | null;
+  expenseDelta: number | null;
+  profitDelta: number | null;
+  revenuePercentChange: number | null;
+  expensePercentChange: number | null;
+  profitPercentChange: number | null;
 };
 
 export type IngestionResult = {

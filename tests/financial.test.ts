@@ -107,23 +107,23 @@ describe("financial ingestion and analysis", () => {
   it("validates and reports corrupt or incompatible local storage payloads", () => {
     expect(deserializeFinancialDataset("not-json")).toBeNull();
     expect(deserializeFinancialDataset(JSON.stringify({ version: 0, dataset: {} }))).toBeNull();
-    expect(deserializeFinancialDataset(JSON.stringify({ version: 1, dataset: {} }))).toBeNull();
+    expect(deserializeFinancialDataset(JSON.stringify({ version: 2, dataset: {} }))).toBeNull();
   });
 
   it("round trips a valid versioned dataset and rejects a tampered summary", async () => {
     const file = createFile("Category,Amount\nRevenue,100\nExpense,25\n");
     const dataset = analyzeData(await readExcel(file), createUploadedFile(file));
-    const serialized = JSON.stringify({ version: 1, dataset });
+    const serialized = JSON.stringify({ version: 2, dataset });
     expect(deserializeFinancialDataset(serialized)).toEqual(dataset);
-    const tampered = { version: 1, dataset: { ...dataset, summary: { ...dataset.summary, profit: 999 } } };
+    const tampered = { version: 2, dataset: { ...dataset, summary: { ...dataset.summary, profit: 999 } } };
     expect(deserializeFinancialDataset(JSON.stringify(tampered))).toBeNull();
   });
 
   it("answers deterministic questions from actual dataset totals and categories", async () => {
     const file = createFile("Category,Amount\nRevenue,900\nRent,300\nPayroll,150\n");
     const dataset = analyzeData(await readExcel(file), uploadedFile);
-    expect(answerFinancialQuestion("What is total revenue?", dataset)).toContain("900 KD");
-    expect(answerFinancialQuestion("Which categories have the highest expenses?", dataset)).toContain("Rent (300 KD)");
+    expect(answerFinancialQuestion("What is total revenue?", dataset)).toContain("900 (unit unavailable)");
+    expect(answerFinancialQuestion("Which categories have the highest expenses?", dataset)).toContain("Rent (300 (unit unavailable))");
     expect(answerFinancialQuestion("What is the expense ratio?", dataset)).toContain("50.0%");
   });
 });

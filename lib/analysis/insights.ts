@@ -1,6 +1,7 @@
-import type { FinancialSummary, Insight } from "@/lib/financial/types";
+import type { FinancialSummary, FinancialUnit, Insight } from "@/lib/financial/types";
+import { formatFinancialAmount } from "@/lib/financial/unit";
 
-export function generateInsights(data: FinancialSummary): Insight[] {
+export function generateInsights(data: FinancialSummary, unit: FinancialUnit): Insight[] {
   const insights: Insight[] = [];
   if (data.quality === "low") {
     insights.push({ id: "quality-low", level: "warning", message: "Data quality is low. Review the skipped rows and column mappings before relying on these figures." });
@@ -20,7 +21,7 @@ export function generateInsights(data: FinancialSummary): Insight[] {
 
   const expenseRatio = (data.expenses / data.revenue) * 100;
   const profitMargin = (data.profit / data.revenue) * 100;
-  insights.push({ id: "profit-total", level: data.profit >= 0 ? "good" : "warning", message: `Net result from analyzed revenue and expenses: ${data.profit.toLocaleString()} KD.` });
+  insights.push({ id: "profit-total", level: data.profit >= 0 ? "good" : "warning", message: `Net result from analyzed revenue and expenses: ${formatFinancialAmount(data.profit, unit)}.` });
   insights.push({ id: "expense-ratio", level: expenseRatio > 80 ? "warning" : "info", message: `Expense ratio: ${expenseRatio.toFixed(1)}%.` });
   insights.push({ id: "profit-margin", level: profitMargin < 10 ? "warning" : "info", message: `Profit margin: ${profitMargin.toFixed(1)}%.` });
   if (expenseRatio > 80) insights.push({ id: "expenses-high", level: "warning", message: "Expenses are above 80% of revenue." });

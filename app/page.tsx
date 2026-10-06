@@ -1,6 +1,7 @@
 "use client";
 
 import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { formatFinancialAmount } from "@/lib/financial/unit";
 import AnalysisCard from "@/components/dashboard/AnalysisCard";
 import FileUpload from "@/components/upload/FileUpload";
 
@@ -21,9 +22,9 @@ export default function Home() {
           <p className="mb-4 text-sm text-zinc-400">Current dataset: {dataset.uploadedFile.name} · {dataset.summary.quality} quality · {dataset.summary.confidence}% confidence</p>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <AnalysisCard title="Rows analyzed" value={`${dataset.summary.rowsAnalyzed}/${dataset.summary.totalRows}`} />
-            <AnalysisCard title="Revenue" value={dataset.summary.revenue === null ? "Unavailable" : `${dataset.summary.revenue.toLocaleString()} KD`} status={dataset.summary.revenue !== null && dataset.summary.revenue > 0 ? "success" : "neutral"} />
-            <AnalysisCard title="Expenses" value={dataset.summary.expenses === null ? "Unavailable" : `${dataset.summary.expenses.toLocaleString()} KD`} status={dataset.summary.expenses !== null && dataset.summary.expenses > 0 ? "warning" : "neutral"} />
-            <AnalysisCard title="Profit" value={dataset.summary.profit === null ? "Unavailable" : `${dataset.summary.profit.toLocaleString()} KD`} status={dataset.summary.profit === null ? "neutral" : dataset.summary.profit >= 0 ? "success" : "danger"} />
+            <AnalysisCard title="Revenue" value={dataset.summary.revenue === null ? "Unavailable" : formatFinancialAmount(dataset.summary.revenue, dataset.currency)} status={dataset.summary.revenue !== null && dataset.summary.revenue > 0 ? "success" : "neutral"} />
+            <AnalysisCard title="Expenses" value={dataset.summary.expenses === null ? "Unavailable" : formatFinancialAmount(dataset.summary.expenses, dataset.currency)} status={dataset.summary.expenses !== null && dataset.summary.expenses > 0 ? "warning" : "neutral"} />
+            <AnalysisCard title="Profit" value={dataset.summary.profit === null ? "Unavailable" : formatFinancialAmount(dataset.summary.profit, dataset.currency)} status={dataset.summary.profit === null ? "neutral" : dataset.summary.profit >= 0 ? "success" : "danger"} />
           </div>
         </section>
       )}

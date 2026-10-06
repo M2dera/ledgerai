@@ -1,10 +1,12 @@
 import { detectColumns } from "@/lib/financial/columns";
+import { detectFinancialUnit } from "@/lib/financial/unit";
 import type {
   DetectedColumns,
   FinancialDataset,
   FinancialQuality,
   FinancialRow,
   FinancialSummary,
+  FinancialUnit,
   UploadedFile,
 } from "@/lib/financial/types";
 import type { IngestionResult } from "@/lib/financial/types";
@@ -79,6 +81,13 @@ export function analyzeData(input: IngestionResult, uploadedFile: UploadedFile):
   const errors = [...input.errors];
   const detection = detectColumns(input.columns);
   const detectedColumns: DetectedColumns = detection.detected;
+  const moneyFields = [detectedColumns.revenue, detectedColumns.expense, detectedColumns.amount, detectedColumns.debit, detectedColumns.credit, detectedColumns.profit].filter((value): value is string => Boolean(value));
+  const currency: FinancialUnit = detectFinancialUnit(
+    moneyFields,
+    input.rows.flatMap((row) => moneyFields.map((field) => row[field])),
+  );
+  if (currency.status === "unknown") warnings.push("Currency or unit is not stated in the file; totals are shown without an assumed currency.");
+  if (currency.status === "ambiguous") warnings.push("Currency or unit markers conflict or are ambiguous; monetary totals are unavailable until the source unit is clarified.");
 
   for (const [field, columns] of Object.entries(detection.ambiguous)) {
     warnings.push(`Several columns could represent ${field}: ${columns?.join(", ")}. Those values will not be included until the headings are clarified.`);
@@ -195,8 +204,9 @@ export function analyzeData(input: IngestionResult, uploadedFile: UploadedFile):
 
   const revenueTotal = rows.reduce((sum, row) => sum + (row.analyzed ? row.revenue : 0), 0);
   const expensesTotal = rows.reduce((sum, row) => sum + (row.analyzed ? row.expense : 0), 0);
-  const revenue = revenueAvailable ? revenueTotal : null;
-  const expenses = expensesAvailable ? expensesTotal : null;
+  const unitSafe = currency.status !== "ambiguous";
+  const revenue = revenueAvailable && unitSafe ? revenueTotal : null;
+  const expenses = expensesAvailable && unitSafe ? expensesTotal : null;
   const profit = revenue !== null && expenses !== null ? revenue - expenses : null;
   const qualityResult = qualityFor(rowsAnalyzed, rowsSkipped, warnings.length + errors.length, revenueAvailable && expensesAvailable);
   const summary: FinancialSummary = {
@@ -211,7 +221,7 @@ export function analyzeData(input: IngestionResult, uploadedFile: UploadedFile):
     ...qualityResult,
   };
 
-  return { uploadedFile, columns: input.columns, detectedColumns, rows, summary, warnings, errors };
+  return { uploadedFile, currency, columns: input.columns, detectedColumns, rows, summary, warnings, errors };
 }
 
 export function createUploadedFile(file: Pick<File, "name" | "size" | "type">): UploadedFile {

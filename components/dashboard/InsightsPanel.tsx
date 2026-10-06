@@ -30,7 +30,7 @@ export default function InsightsPanel({ insights, revenue, expenses, profit }: I
     <section className="mt-8 rounded-xl border border-zinc-700 bg-zinc-900 p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white">Calculated Financial Insights</h2>
-        <p className="mt-1 text-zinc-400">Deterministic observations from safely analyzed rows; no AI service is connected.</p>
+          <p className="mt-1 text-zinc-400">Deterministic observations from safely analyzed rows; no AI service is connected.</p>
         <div className={`mt-4 inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold ${healthStyle}`}>Financial Health: {healthStatus}</div>
       </div>
       <div className="space-y-4">

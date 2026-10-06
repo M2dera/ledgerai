@@ -10,6 +10,7 @@ import FinancialRatios from "@/components/dashboard/FinancialRatios";
 import TimeSavedCard from "@/components/dashboard/TimeSavedCard";
 import SmartAlerts from "@/components/dashboard/SmartAlerts";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { formatFinancialAmount } from "@/lib/financial/unit";
 
 export default function DashboardPage() {
   const { dataset, insights, alerts } = useLedgerData();
@@ -34,12 +35,12 @@ export default function DashboardPage() {
               </div>
               <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
                 <AnalysisCard title="Rows analyzed" value={`${summary.rowsAnalyzed}/${summary.totalRows}`} />
-                <AnalysisCard title="Revenue" value={summary.revenue === null ? "Unavailable" : `${summary.revenue.toLocaleString()} KD`} status={summary.revenue !== null && summary.revenue > 0 ? "success" : "neutral"} />
-                <AnalysisCard title="Expenses" value={summary.expenses === null ? "Unavailable" : `${summary.expenses.toLocaleString()} KD`} status={summary.expenses !== null && summary.expenses > 0 ? "warning" : "neutral"} />
-                <AnalysisCard title="Profit" value={summary.profit === null ? "Unavailable" : `${summary.profit.toLocaleString()} KD`} status={summary.profit === null ? "neutral" : summary.profit >= 0 ? "success" : "danger"} />
+                <AnalysisCard title="Revenue" value={summary.revenue === null ? "Unavailable" : formatFinancialAmount(summary.revenue, dataset.currency)} status={summary.revenue !== null && summary.revenue > 0 ? "success" : "neutral"} />
+                <AnalysisCard title="Expenses" value={summary.expenses === null ? "Unavailable" : formatFinancialAmount(summary.expenses, dataset.currency)} status={summary.expenses !== null && summary.expenses > 0 ? "warning" : "neutral"} />
+                <AnalysisCard title="Profit" value={summary.profit === null ? "Unavailable" : formatFinancialAmount(summary.profit, dataset.currency)} status={summary.profit === null ? "neutral" : summary.profit >= 0 ? "success" : "danger"} />
               </div>
               {alerts.length > 0 && <SmartAlerts alerts={alerts} />}
-              {summary.revenue !== null && summary.expenses !== null && summary.profit !== null && <FinancialChart revenue={summary.revenue} expenses={summary.expenses} profit={summary.profit} />}
+              {summary.revenue !== null && summary.expenses !== null && summary.profit !== null && <FinancialChart revenue={summary.revenue} expenses={summary.expenses} profit={summary.profit} unit={dataset.currency} />}
               {summary.revenue !== null && summary.expenses !== null && summary.profit !== null && <FinancialRatios revenue={summary.revenue} expenses={summary.expenses} profit={summary.profit} />}
               <TimeSavedCard rows={summary.rowsAnalyzed} />
               {insights.length > 0 && <InsightsPanel insights={insights} revenue={summary.revenue} expenses={summary.expenses} profit={summary.profit} />}
