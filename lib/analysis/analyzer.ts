@@ -1,5 +1,5 @@
 import { detectColumns } from "@/lib/financial/columns";
-import { detectFinancialUnit } from "@/lib/financial/unit";
+import { detectFinancialUnit, isCurrencyHeader } from "@/lib/financial/unit";
 import type {
   DetectedColumns,
   FinancialDataset,
@@ -82,10 +82,15 @@ export function analyzeData(input: IngestionResult, uploadedFile: UploadedFile):
   const detection = detectColumns(input.columns);
   const detectedColumns: DetectedColumns = detection.detected;
   const moneyFields = [detectedColumns.revenue, detectedColumns.expense, detectedColumns.amount, detectedColumns.debit, detectedColumns.credit, detectedColumns.profit].filter((value): value is string => Boolean(value));
-  const currency: FinancialUnit = detectFinancialUnit(
-    moneyFields,
-    input.rows.flatMap((row) => moneyFields.map((field) => row[field])),
-  );
+  const monetaryRows = input.rows.filter((row) => moneyFields.some((field) => row[field] !== null && row[field] !== undefined && String(row[field]).trim() !== ""));
+  const currencyColumns = input.columns.filter(isCurrencyHeader);
+  const currency: FinancialUnit = currencyColumns.length > 1
+    ? { status: "ambiguous", code: null, source: "header", candidates: [] }
+    : detectFinancialUnit(
+      moneyFields,
+      input.rows.flatMap((row) => moneyFields.map((field) => row[field])),
+      currencyColumns.length === 1 ? monetaryRows.map((row) => row[currencyColumns[0]]) : undefined,
+    );
   if (currency.status === "unknown") warnings.push("Currency or unit is not stated in the file; totals are shown without an assumed currency.");
   if (currency.status === "ambiguous") warnings.push("Currency or unit markers conflict or are ambiguous; monetary totals are unavailable until the source unit is clarified.");
 

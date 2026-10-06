@@ -25,6 +25,32 @@ describe("financial ingestion and analysis", () => {
     expect(result.dataset.summary).toMatchObject({ totalRows: 2, rowsAnalyzed: 2, rowsSkipped: 0, revenue: 1200, expenses: 300, profit: 900 });
   });
 
+  it("detects KWD consistently from an explicit English currency column", async () => {
+    const result = await analyzeCsv("Currency,Revenue,Expenses\nKWD,95000,27870\nKWD,0,0\n");
+    expect(result.dataset.currency).toMatchObject({ status: "known", code: "KWD", source: "cell" });
+    expect(result.dataset.summary).toMatchObject({ revenue: 95000, expenses: 27870, profit: 67130 });
+    expect(result.dataset.warnings.join(" ")).not.toContain("Currency or unit is not stated");
+  });
+
+  it("recognizes Arabic currency headers and KWD labels without accepting mixed or missing units", async () => {
+    const headers = ["\u0627\u0644\u0639\u0645\u0644\u0629", "Revenue", "Expenses"];
+    const rows = ["KWD", "KD", "\u062f.\u0643", "\u0627\u0644\u0643\u0648\u064a\u062a"].map((currency) => ({ [headers[0]]: currency, Revenue: 10, Expenses: 2 }));
+    const arabicDataset = analyzeData({ columns: headers, rows, warnings: [], errors: [] }, uploadedFile);
+    expect(arabicDataset.currency).toMatchObject({ status: "known", code: "KWD" });
+    const alternateArabicHeader = "\u0627\u0644\u0639\u0645\u0644\u0647";
+    const alternateDataset = analyzeData({ columns: [alternateArabicHeader, "Revenue", "Expenses"], rows: [{ [alternateArabicHeader]: "KWD", Revenue: 10, Expenses: 2 }], warnings: [], errors: [] }, uploadedFile);
+    expect(alternateDataset.currency).toMatchObject({ status: "known", code: "KWD" });
+
+    const mixedDataset = analyzeData({ columns: ["Currency", "Revenue", "Expenses"], rows: [{ Currency: "KWD", Revenue: 10, Expenses: 2 }, { Currency: "USD", Revenue: 5, Expenses: 1 }], warnings: [], errors: [] }, uploadedFile);
+    expect(mixedDataset.currency.status).toBe("ambiguous");
+    expect(mixedDataset.summary.revenue).toBeNull();
+    expect(mixedDataset.summary.expenses).toBeNull();
+
+    const missingUnit = analyzeData({ columns: ["Currency", "Revenue", "Expenses"], rows: [{ Currency: "KWD", Revenue: 10, Expenses: 2 }, { Currency: "", Revenue: 5, Expenses: 1 }], warnings: [], errors: [] }, uploadedFile);
+    expect(missingUnit.currency.status).toBe("ambiguous");
+    expect(missingUnit.summary.profit).toBeNull();
+  });
+
   it("reads XLSX and XLS workbooks and treats blank paired values as zero", async () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
