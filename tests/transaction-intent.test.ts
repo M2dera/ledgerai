@@ -67,33 +67,51 @@ describe("deterministic transaction intents", () => {
   it.each([
     "اشتريت لابتوب بـ 300 د.ك من البنك",
     "purchased a laptop 300 KWD from bank",
-  ])("keeps an asset purchase unresolved until the asset account is supplied: %s", (description) => {
+  ])("resolves an explicit laptop purchase with the supported fixed-asset account: %s", (description) => {
     const result = parseTransactionIntent(description);
 
     expect(result).toMatchObject({
-      status: "unresolved",
+      status: "resolved",
       intent: {
         intentType: "asset_purchase",
         amount: 300,
         currency: "KWD",
         categoryHint: "laptop",
+        accountHint: { id: "computer-equipment", type: "asset" },
         sourceAccountHint: { id: "bank", type: "asset" },
       },
     });
-    expect(result.issues.map(({ code }) => code)).toContain("ASSET_ACCOUNT_REQUIRED");
-    expect(result.intent.accountHint).toBeUndefined();
+    expect(result.issues).toEqual([]);
   });
 
-  it("preserves laptop/computer hints without inventing a fixed-asset account", () => {
+  it("maps only explicit laptop/computer hints to the existing Computer Equipment account", () => {
     for (const [description, categoryHint] of [
       ["شريت لابتوب 300 د.ك من البنك", "laptop"],
       ["bought a computer 300 KWD from bank", "computer"],
       ["اشتريت حاسوب 300 د.ك من البنك", "computer"],
     ] as const) {
       const result = parseTransactionIntent(description);
-      expect(result, description).toMatchObject({ status: "unresolved", intent: { intentType: "asset_purchase", categoryHint } });
-      expect(result.intent.accountHint).toBeUndefined();
+      expect(result, description).toMatchObject({ status: "resolved", intent: { intentType: "asset_purchase", categoryHint } });
+      expect(result.intent.accountHint).toEqual({ id: "computer-equipment", type: "asset" });
+      expect(DEFAULT_CHART_OF_ACCOUNTS.some((account) => account.id === result.intent.accountHint?.id)).toBe(true);
     }
+  });
+
+  it.each(["اشتريت لابتوب بـ 300 د.ك", "bought a computer 300 KWD"])("leaves asset purchases unresolved without explicit payment sources: %s", (description) => {
+    const result = parseTransactionIntent(description);
+    expect(result.status).toBe("unresolved");
+    expect(result.intent.accountHint).toEqual({ id: "computer-equipment", type: "asset" });
+    expect(result.intent.sourceAccountHint).toBeUndefined();
+    expect(result.issues.map(({ code }) => code)).toEqual(["MISSING_SOURCE_ACCOUNT"]);
+  });
+
+  it.each(["اشتريت بـ 300 د.ك من البنك", "bought 300 KWD from bank"])("does not select Computer Equipment without a supported asset category: %s", (description) => {
+    const result = parseTransactionIntent(description);
+    expect(result.status).toBe("unresolved");
+    expect(result.intent.categoryHint).toBeUndefined();
+    expect(result.intent.accountHint).toBeUndefined();
+    expect(result.intent.sourceAccountHint).toEqual({ id: "bank", type: "asset" });
+    expect(result.issues.map(({ code }) => code)).toEqual(["MISSING_CATEGORY", "ASSET_ACCOUNT_REQUIRED"]);
   });
 
   it.each(["KWD", "SAR", "AED", "USD", "EUR", "GBP", "CAD", "AUD", "JPY"])("preserves the explicit %s currency without conversion", (currency) => {

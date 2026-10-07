@@ -242,9 +242,13 @@ export function parseTransactionIntent(description: unknown): TransactionIntentR
       intent.accountHint = accountHint(accountId[intent.categoryHint]);
     } else issues.push(issue("MISSING_CATEGORY", "An explicit supported expense category is required."));
   } else if (matched.intentType === "asset_purchase") {
-    if (category) intent.categoryHint = /computer|حاسوب/.test(category) ? "computer" : "laptop";
-    else issues.push(issue("MISSING_CATEGORY", "An explicit supported asset category is required."));
-    issues.push(issue("ASSET_ACCOUNT_REQUIRED", "The existing chart has no fixed-asset account; an asset account must be supplied before accounting mapping."));
+    if (category) {
+      intent.categoryHint = /computer|حاسوب/.test(category) ? "computer" : "laptop";
+      intent.accountHint = accountHint("computer-equipment");
+    } else {
+      issues.push(issue("MISSING_CATEGORY", "An explicit supported asset category is required."));
+      issues.push(issue("ASSET_ACCOUNT_REQUIRED", "An asset account cannot be selected without an explicit supported asset category."));
+    }
   } else if (matched.intentType === "owner_investment") {
     intent.accountHint = accountHint("owners-equity");
   } else if (category) {

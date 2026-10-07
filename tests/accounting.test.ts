@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_TYPES,
   calculateAccountBalance,
   calculateLedgerTotals,
   classifyBalanceSheet,
@@ -51,6 +52,21 @@ const ledgerEntries: JournalEntry[] = [
 ];
 
 describe("accounting core", () => {
+  it("classifies Computer Equipment as a fixed asset within the five standard account types", () => {
+    expect(ACCOUNT_TYPES).toEqual(["asset", "liability", "equity", "revenue", "expense"]);
+    expect(accounts.find((account) => account.id === "computer-equipment")).toEqual({
+      id: "computer-equipment", code: "1200", name: "Computer Equipment", type: "asset", category: "fixed-assets",
+    });
+    const purchase = entry({ lines: [
+      { accountId: "computer-equipment", debit: 300, credit: 0 },
+      { accountId: "bank", debit: 0, credit: 300 },
+    ] });
+    expect(validateJournalEntry(purchase, accounts)).toEqual({ valid: true, errors: [] });
+    const result = classifyBalanceSheet([purchase], accounts);
+    expect(result.assets.find(({ account }) => account.id === "computer-equipment")).toMatchObject({ balance: 300 });
+    expect(result.totalAssets).toBe(0);
+  });
+
   it("accepts a valid balanced journal entry", () => {
     expect(validateJournalEntry(entry(), accounts)).toEqual({ valid: true, errors: [] });
   });
@@ -124,7 +140,7 @@ describe("accounting core", () => {
 
   it("classifies asset, liability, and equity accounts for a basic Balance Sheet foundation", () => {
     const result = classifyBalanceSheet(ledgerEntries, accounts);
-    expect(result.assets.map(({ account }) => account.type)).toEqual(["asset", "asset", "asset"]);
+    expect(result.assets.map(({ account }) => account.type)).toEqual(["asset", "asset", "asset", "asset"]);
     expect(result.liabilities.map(({ account }) => account.id)).toEqual(["accounts-payable"]);
     expect(result.equity.map(({ account }) => account.id)).toEqual(["owners-equity"]);
     expect(result).toMatchObject({ currency: "KWD", totalAssets: 14_000, totalLiabilities: 0, totalEquity: 10_000 });

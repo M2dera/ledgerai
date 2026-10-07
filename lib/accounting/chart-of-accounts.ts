@@ -4,6 +4,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS = [
   { id: "cash", code: "1000", name: "Cash", type: "asset" },
   { id: "bank", code: "1010", name: "Bank", type: "asset" },
   { id: "accounts-receivable", code: "1100", name: "Accounts Receivable", type: "asset" },
+  { id: "computer-equipment", code: "1200", name: "Computer Equipment", type: "asset", category: "fixed-assets" },
   { id: "accounts-payable", code: "2000", name: "Accounts Payable", type: "liability" },
   { id: "owners-equity", code: "3000", name: "Owner's Equity", type: "equity" },
   { id: "revenue", code: "4000", name: "Revenue", type: "revenue" },

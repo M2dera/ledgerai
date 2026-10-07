@@ -77,8 +77,8 @@ below. Category words only map within their matching transaction clause.
 | `salaries` | `راتب`, `رواتب`, `أجور`, `اجور` | `salary`, `salaries`, `payroll`, `wage`, `wages` | `salaries-expense` |
 | `utilities` | `كهرباء`, `ماي`, `ماء`, `مياه`, `خدمات` in an expense clause | `electricity`, `water`, `utility`, `utilities` | `utilities-expense` |
 | `services` | `خدمة`, `خدمه`, `خدمات` in a revenue clause | `service`, `services` | `revenue` |
-| `laptop` | `لابتوب` | `laptop` | None; `ASSET_ACCOUNT_REQUIRED` |
-| `computer` | `حاسوب` | `computer` | None; `ASSET_ACCOUNT_REQUIRED` |
+| `laptop` | `لابتوب` | `laptop` | `computer-equipment` |
+| `computer` | `حاسوب` | `computer` | `computer-equipment` |
 
 `ACCOUNT` is `bank` or `cash` in English; Arabic supports `بنك`, `البنك`,
 `كاش`, `الكاش`, `صندوق`, `الصندوق`. These map to the existing `bank` and
@@ -119,9 +119,13 @@ direction without inventing a bank/cash payment or party name.
   without deciding between revenue, receivable settlement, or advance. Service
   sales without the service category receive the same issue. Receipts and owner
   investments need an explicit receiving account (`MISSING_DESTINATION_ACCOUNT`).
-- Asset purchases retain their stated category and payment evidence but always
-  remain unresolved: the existing chart has no fixed-asset account. No equipment
-  account ID or name is fabricated and the chart is not extended by this engine.
+- Asset purchases with an explicit laptop/computer category use the existing
+  `computer-equipment` account. It has type `asset` and category `fixed-assets`;
+  the five standard account types are unchanged. An explicit source account and
+  currency are still required. Missing asset category gives `MISSING_CATEGORY`
+  and `ASSET_ACCOUNT_REQUIRED`, retaining no primary account hint. Other asset
+  categories remain unsupported. This adds an account hint without changing the
+  accepted clause grammar or creating a journal entry.
 - Conflicting supported account/category phrases joined with `or`, `and`, `او`,
   or `و` receive ambiguity issues and omit account/category hints. Other conflicting
   or compound clauses are rejected by the whole-clause grammar. Unsupported
@@ -143,7 +147,9 @@ direction without inventing a bank/cash payment or party name.
 | `دفعت 600 د.ك` | Unresolved: category and source missing. |
 | `دفعت إيجار 600 د.ك` | Unresolved: source missing; retain the rent hint. |
 | `استلمت من العميل 2,000 د.ك` | Unresolved: revenue context and receiving account missing. |
-| `اشتريت لابتوب بـ 300 د.ك من البنك` | Unresolved: retain laptop and bank evidence; fixed-asset account missing. |
+| `اشتريت لابتوب بـ 300 د.ك من البنك` | Resolved: `asset_purchase`, amount `300`, `KWD`, `laptop`, primary `computer-equipment`, source `bank`. |
+| `اشتريت لابتوب بـ 300 د.ك` | Unresolved: source missing; retain laptop and `computer-equipment` evidence. |
+| `bought 300 KWD from bank` | Unresolved: asset category missing; no primary account selected. |
 | `ضخيت 5,000 د.ك في الشركة` | Unresolved: receiving account missing. |
 | `paid rent 600 KWD from bank or cash` | Unresolved: conflicting account hints, neither selected. |
 

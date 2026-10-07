@@ -7,6 +7,7 @@ export type Account = {
   code: string;
   name: string;
   type: AccountType;
+  category?: "fixed-assets";
 };
 
 export type JournalEntryLine = {
