@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
 
-export default function FileUpload() {
+export default function FileUpload({ onSuccess }: { onSuccess?: () => void }) {
   const { uploadFeedback, uploadFile } = useLedgerData();
   const inputRef = useRef<HTMLInputElement>(null);
   const isLoading = uploadFeedback.status === "loading";
@@ -20,7 +20,7 @@ export default function FileUpload() {
           className="sr-only"
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) void uploadFile(file);
+            if (file) void uploadFile(file).then((succeeded) => { if (succeeded) onSuccess?.(); });
             event.target.value = "";
           }}
         />

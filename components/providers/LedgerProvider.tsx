@@ -13,28 +13,33 @@ type LedgerContextValue = {
   insights: Insight[];
   alerts: Alert[];
   uploadFeedback: UploadFeedback;
-  uploadFile: (file: File) => Promise<void>;
+  isReady: boolean;
+  uploadFile: (file: File) => Promise<boolean>;
 };
 
 const LedgerContext = createContext<LedgerContextValue | null>(null);
 
 export function LedgerProvider({ children }: { children: React.ReactNode }) {
   const [dataset, setDataset] = useState<FinancialDataset | null>(null);
+  const [isReady, setIsReady] = useState(false);
   const [uploadFeedback, setUploadFeedback] = useState<UploadFeedback>({ status: "idle", message: "", warnings: [], errors: [] });
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setDataset((current) => current ?? loadFinancialDataset()));
+    const frame = window.requestAnimationFrame(() => {
+      setDataset((current) => current ?? loadFinancialDataset());
+      setIsReady(true);
+    });
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const uploadFile = useCallback(async (file: File) => {
+  const uploadFile = useCallback(async (file: File): Promise<boolean> => {
     setUploadFeedback({ status: "loading", message: `Parsing ${file.name}…`, warnings: [], errors: [] });
     try {
       const result = await readExcel(file);
       const nextDataset = analyzeData(result, createUploadedFile(file));
       if (nextDataset.errors.length) {
         setUploadFeedback({ status: "error", message: nextDataset.errors[0], errors: nextDataset.errors, warnings: nextDataset.warnings });
-        return;
+        return false;
       }
 
       setDataset(nextDataset);
@@ -49,14 +54,16 @@ export function LedgerProvider({ children }: { children: React.ReactNode }) {
         warnings: nextDataset.warnings,
         errors: [],
       });
+      return true;
     } catch {
       setUploadFeedback({ status: "error", message: "The file could not be parsed. Check that it is a valid XLSX, XLS, or CSV file.", warnings: [], errors: ["The file could not be parsed. Check that it is a valid XLSX, XLS, or CSV file."] });
+      return false;
     }
   }, []);
 
   const insights = useMemo(() => dataset ? generateInsights(dataset.summary, dataset.currency) : [], [dataset]);
   const alerts = useMemo(() => dataset ? generateAlerts(dataset.summary) : [], [dataset]);
-  const value = useMemo(() => ({ dataset, insights, alerts, uploadFeedback, uploadFile }), [dataset, insights, alerts, uploadFeedback, uploadFile]);
+  const value = useMemo(() => ({ dataset, insights, alerts, uploadFeedback, isReady, uploadFile }), [dataset, insights, alerts, uploadFeedback, isReady, uploadFile]);
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;
 }
