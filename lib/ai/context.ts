@@ -17,7 +17,8 @@ export function createFinancialContext(dataset: FinancialDataset, options: { inc
   const facts: FinancialFact[] = [];
   const add = (kind: FinancialFact["kind"], label: string, value: number | null, periodId?: string) => {
     if (value === null || dataset.currency.status === "ambiguous") return;
-    facts.push({ id: stableId(`${kind}|${label}|${periodId ?? "all"}`), kind, label, value, unit: dataset.currency, ...(periodId ? { periodId } : {}) });
+    const unit = kind === "ratio" ? { kind: "percentage" as const } : { kind: "currency" as const, unit: dataset.currency };
+    facts.push({ id: stableId(`${kind}|${label}|${periodId ?? "all"}`), kind, label, value, unit, ...(periodId ? { periodId } : {}) });
   };
   add("total", "revenue", dataset.summary.revenue);
   add("total", "expenses", dataset.summary.expenses);
@@ -56,7 +57,7 @@ export function createFinancialContext(dataset: FinancialDataset, options: { inc
     }))
     : [];
   return {
-    version: 1, facts: facts.slice(0, MAX_FACTS), categories, periods, comparisons,
+    version: 2, facts: facts.slice(0, MAX_FACTS), categories, periods, comparisons,
     quality: { level: dataset.summary.quality, confidence: dataset.summary.confidence, rowsAnalyzed: dataset.summary.rowsAnalyzed, rowsSkipped: dataset.summary.rowsSkipped, warnings: warnings.map((value) => ({ value, trust: "untrusted" as const })) },
     unit: dataset.currency, transactionDetails,
   };

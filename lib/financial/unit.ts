@@ -1,4 +1,4 @@
-import type { FinancialUnit } from "./types";
+import type { FinancialFactUnit, FinancialUnit } from "./types";
 
 const currencyPatterns: Array<[string, RegExp]> = [
   ["KWD", /\b(?:KWD|KD)\b|\u062f\s*\.?\s*\u0643|\u062f\u064a\u0646\u0627\u0631\s*\u0643\u0648\u064a\u062a\u064a/i],
@@ -70,4 +70,9 @@ export function detectFinancialUnit(headers: string[], values: unknown[], explic
 export function formatFinancialAmount(value: number, unit: FinancialUnit): string {
   const amount = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return unit.status === "known" && unit.code ? `${amount} ${unit.code}` : `${amount} (unit unavailable)`;
+}
+
+export function formatFinancialFactValue(value: number, unit: FinancialFactUnit): string {
+  const amount = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return unit.kind === "percentage" ? `${amount}%` : formatFinancialAmount(value, unit.unit);
 }

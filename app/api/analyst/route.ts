@@ -1,4 +1,5 @@
 import { runAnalyst } from "@/lib/ai/service";
+import { AnalystServiceError } from "@/lib/ai/errors";
 import { DEFAULT_USAGE_POLICY, validateAnalystRequest } from "@/lib/ai/validation";
 
 export const runtime = "nodejs";
@@ -44,7 +45,13 @@ export async function POST(request: Request): Promise<Response> {
   } catch (error) {
     if (error instanceof SyntaxError) return json({ error: { code: "invalid_request", message: "Request is invalid or too large." } }, 400);
     // Do not log request bodies, user content, or provider exceptions.
-    const timedOut = error instanceof Error && "code" in error && error.code === "timeout";
-    return json({ error: { code: timedOut ? "timeout" : "provider_unavailable", message: "The analyst service is temporarily unavailable." } }, timedOut ? 504 : 503);
+    if (error instanceof AnalystServiceError) {
+      const status = error.code === "timeout" ? 504 : error.code === "invalid_request" ? 400 : 503;
+      return json({ error: { code: error.code, message: error.safeMessage } }, status);
+    }
+    if (error instanceof Error && "code" in error && error.code === "timeout") {
+      return json({ error: { code: "timeout", message: "The local analyst took too long to respond. Please try again." } }, 504);
+    }
+    return json({ error: { code: "provider_unavailable", message: "The local analyst service is temporarily unavailable." } }, 503);
   }
 }

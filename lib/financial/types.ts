@@ -24,6 +24,10 @@ export type FinancialUnit = {
   candidates: string[];
 };
 
+export type FinancialFactUnit =
+  | { kind: "currency"; unit: FinancialUnit }
+  | { kind: "percentage" };
+
 export type FinancialRow = {
   rowNumber: number;
   date?: string;
