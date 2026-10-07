@@ -130,6 +130,25 @@ function findCategoryMention(question: string, dataset?: FinancialDataset | null
 
 const directCategoryAmountPattern = /\b(how much|what did i spend|spent on|spend on|cost of|payroll|salary|salaries|wages|rent|marketing|software)\b|كم|صرف(?:ت)?|مبلغ/u;
 
+type ArabicDirectMetric = "profit" | "revenue" | "expenses";
+
+const arabicDirectMetricPattern = /(?:^|\s)(?:\u0643\u0645|\u0634\u0643\u062B\u0631|\u0634\u0646\u0648)\s*(?:(?:\u0635\u0627\u0641\u064A|\u0627\u062C\u0645\u0627\u0644\u064A)\s*)?(?:\u0637\u0644\u0639\s*)?(?:\u0627\u0644\u0631\u0628\u062D|\u0627\u0644\u0627\u0631\u0628\u0627\u062D|\u0627\u0644\u0627\u064A\u0631\u0627\u062F\u0627\u062A|\u0627\u0644\u0645\u0635\u0627\u0631\u064A\u0641)(?:\s*(?:\u0627\u0644\u0635\u0627\u0641\u064A|\u0627\u0644\u0627\u062C\u0645\u0627\u0644\u064A))?(?:\s|[؟?]|$)/u;
+
+function getArabicDirectMetric(question: string): ArabicDirectMetric | null {
+  const normalized = question.toLocaleLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+    .replace(/[\u0622\u0623\u0625]/g, "\u0627")
+    .replace(/\u0629/g, "\u0647")
+    .replace(/\u0649/g, "\u064A")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!arabicDirectMetricPattern.test(normalized)) return null;
+  if (/\u0627\u0644\u0631\u0628\u062D|\u0627\u0644\u0627\u0631\u0628\u0627\u062D/u.test(normalized)) return "profit";
+  if (/\u0627\u0644\u0627\u064A\u0631\u0627\u062F\u0627\u062A/u.test(normalized)) return "revenue";
+  return "expenses";
+}
+
 export function classifyFinancialQuestion(question: string, dataset?: FinancialDataset | null): FinancialQuestionIntent {
   const normalized = normalizeQuestion(question);
   if (!normalized) return "unsupported_general";
@@ -139,6 +158,7 @@ export function classifyFinancialQuestion(question: string, dataset?: FinancialD
   if (interpretivePattern.test(normalized) && (financialTopicPattern.test(normalized) || implicitDatasetAnalysisPattern.test(normalized))) return "interpretive_financial";
   if (categoryRankingPattern.test(normalized)) return "category_ranking";
   if (findCategoryMention(normalized, dataset) && directCategoryAmountPattern.test(normalized)) return "category_metric";
+  if (getArabicDirectMetric(question)) return "deterministic_metric";
   if (directMetricPattern.test(normalized)) return "deterministic_metric";
 
   // Broad, dataset-specific financial questions are safer through the analyst than a guessed metric answer.
@@ -184,6 +204,10 @@ export function answerFinancialQuestion(question: string, dataset: FinancialData
   const normalized = normalizeQuestion(question);
   const { summary } = dataset;
   const caveat = summary.rowsSkipped > 0 ? ` Based on ${summary.rowsAnalyzed} analyzed rows; ${summary.rowsSkipped} rows were skipped.` : "";
+  const arabicMetric = getArabicDirectMetric(question);
+  if (arabicMetric === "profit") return summary.profit === null ? "Profit is unavailable because both revenue and expense totals are required." : `Analyzed profit is ${formatFinancialAmount(summary.profit, dataset.currency)} (revenue minus expenses).${caveat}`;
+  if (arabicMetric === "revenue") return summary.revenue === null ? "Revenue is unavailable because no safe revenue mapping was found." : `Total analyzed revenue is ${formatFinancialAmount(summary.revenue, dataset.currency)}.${caveat}`;
+  if (arabicMetric === "expenses") return summary.expenses === null ? "Expenses are unavailable because no safe expense mapping was found." : `Total analyzed expenses are ${formatFinancialAmount(summary.expenses, dataset.currency)}.${caveat}`;
   const rankedCategories = categoryValues(dataset);
   if (categoryRankingPattern.test(normalized)) {
     const highest = rankedCategories[0];

@@ -52,6 +52,34 @@ describe("dataset-grounded analyst routing and context", () => {
     expect(analyst).not.toHaveBeenCalled();
   });
 
+  it("answers the requested Arabic profit, revenue, and expense totals deterministically", async () => {
+    const dataset = await actualDataset();
+    const analyst = vi.fn(async () => analystResponse);
+    const questions: Array<[string, string]> = [
+      ["\u0643\u0645 \u0635\u0627\u0641\u064A \u0627\u0644\u0631\u0628\u062D\u061F", "67,130"],
+      ["\u0643\u0645 \u0627\u0644\u0631\u0628\u062D\u061F", "67,130"],
+      ["\u0634\u0643\u062B\u0631 \u0627\u0644\u0631\u0628\u062D\u061F", "67,130"],
+      ["\u0634\u0646\u0648 \u0635\u0627\u0641\u064A \u0627\u0644\u0631\u0628\u062D\u061F", "67,130"],
+      ["\u0643\u0645 \u0627\u0644\u0631\u0628\u062D \u0627\u0644\u0635\u0627\u0641\u064A\u061F", "67,130"],
+      ["\u0634\u0643\u062B\u0631 \u0637\u0644\u0639 \u0627\u0644\u0631\u0628\u062D\u061F", "67,130"],
+      ["\u0643\u0645 \u0627\u0644\u0623\u0631\u0628\u0627\u062D\u061F", "67,130"],
+      ["\u0643\u0645 \u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A\u061F", "95,000"],
+      ["\u0643\u0645 \u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u0635\u0627\u0631\u064A\u0641\u061F", "27,870"],
+      ["\u0634\u0643\u062B\u0631 \u0627\u0644\u0645\u0635\u0627\u0631\u064A\u0641\u061F", "27,870"],
+      ["\u0634\u0643\u062B\u0631 \u0627\u0644\u0625\u064A\u0631\u0627\u062F\u0627\u062A\u061F", "95,000"],
+    ];
+
+    for (const [question, expectedAmount] of questions) {
+      expect(classifyFinancialQuestion(question, dataset)).toBe("deterministic_metric");
+      const result = await routeFinancialQuestion(question, dataset, analyst);
+      expect(result).toMatchObject({ route: "local", intent: "deterministic_metric" });
+      expect(result.route === "local" ? result.text : "").toContain(expectedAmount);
+      expect(result.route === "local" ? result.text : "").toContain("KWD");
+    }
+
+    expect(analyst).not.toHaveBeenCalled();
+  });
+
   it("routes 'where is the problem' with ranked categories, shares, and verified trend signals", async () => {
     const dataset = await actualDataset();
     const fullContext = createFinancialContext(dataset);
