@@ -18,9 +18,9 @@ const dataset = analyzeData({
 const request: AnalystRequest = { question: "What should I investigate?", context: createFinancialContext(dataset) };
 const recommendationRequest: AnalystRequest = { question: "شنو تنصحني أراجع أول؟", context: request.context };
 const validModelResponse = {
-  interpretation: "Operating costs should be reviewed alongside the verified revenue evidence.",
-  investigateNext: ["Check whether the largest cost categories are recurring."],
-  factRefs: request.context.facts.slice(0, 1).map((fact) => fact.id),
+  interpretation: "The uncategorized expense group should be reviewed against its source mapping.",
+  investigateNext: ["Review the largest expense categories against the source classifications."],
+  factRefs: request.context.categories[0] ? [request.context.categories[0].factId] : [],
   uncertainty: ["The context does not include transaction-level explanations."],
 };
 
@@ -115,6 +115,8 @@ describe("local Ollama provider", () => {
     const result = await provider.interpret(recommendationRequest);
     expect(result).toMatchObject({ provider: "ollama", factRefs: validModelResponse.factRefs });
     expect(JSON.stringify(sentBody)).toContain(recommendationRequest.question);
+    const factRefsSchema = (sentBody?.format as { properties?: { factRefs?: { contains?: { enum?: string[] } } } } | undefined)?.properties?.factRefs;
+    expect(factRefsSchema?.contains?.enum).toEqual(recommendationRequest.context.categories.slice(0, 3).map((category) => category.factId));
   });
 
   it("retries a temporary Ollama 503 once and then succeeds", async () => {
@@ -156,6 +158,16 @@ describe("local Ollama provider", () => {
     }
   });
 
+  it("rejects unsupported domain concepts after the bounded retry without fabricating a fallback", async () => {
+    let calls = 0;
+    const provider = createOllamaProvider({ fetcher: async () => {
+      calls += 1;
+      return response(JSON.stringify({ ...validModelResponse, interpretation: "Transfers explain the expense pattern." }));
+    } });
+    await expect(provider.interpret(recommendationRequest)).rejects.toMatchObject({ code: "invalid_response" });
+    expect(calls).toBe(2);
+  });
+
   it("returns a safe retryable error after the single response repair is rejected", async () => {
     let calls = 0;
     const provider = createOllamaProvider({ fetcher: async () => {
@@ -180,7 +192,8 @@ describe("local Ollama provider", () => {
     } });
     await expect(provider.interpret(request)).rejects.toMatchObject({ code: "invalid_response" });
     expect(calls).toBe(2);
-    expect(JSON.stringify(retryBody)).toContain("Rewrite the interpretation without any numerical or currency claims. Use factRefs instead.");
+    expect(JSON.stringify(retryBody)).toContain("strict fact and length checks");
+    expect(JSON.stringify(retryBody)).toContain("relevantExpenseCategoryFactIds");
     expect(JSON.stringify(retryBody)).toContain("knownFactIds");
   });
 
@@ -207,12 +220,18 @@ describe("local Ollama provider", () => {
       if (calls === 1) firstSchemaIds = body.format?.properties?.factRefs?.items?.enum ?? [];
       if (calls === 1) return response("{ malformed");
       retryPayload = JSON.parse(body.messages?.[2]?.content ?? "{}") as Record<string, unknown>;
-      return response(JSON.stringify({ ...validModelResponse, factRefs: [context.facts.find((fact) => fact.label === "Payroll")!.id] }));
+      return response(JSON.stringify({
+        ...validModelResponse,
+        interpretation: "Payroll is the leading expense category and should be reviewed using verified evidence.",
+        investigateNext: ["Review the Payroll category classification."],
+        factRefs: [context.facts.find((fact) => fact.label === "Payroll")!.id],
+      }));
     } });
 
     const result = await provider.interpret(realShapeRequest);
     const knownFactIds = retryPayload?.knownFactIds;
-    expect(firstSchemaIds).toEqual(context.facts.map((fact) => fact.id));
+    const expectedAllowedIds = context.categories.slice(0, 3).map((category) => category.factId);
+    expect(firstSchemaIds).toEqual(expectedAllowedIds);
     expect(knownFactIds).toEqual(firstSchemaIds);
     expect(result.factRefs).toEqual([context.facts.find((fact) => fact.label === "Payroll")!.id]);
     expect(context.facts.some((fact) => fact.id === result.factRefs[0])).toBe(true);
@@ -231,6 +250,6 @@ describe("local Ollama provider", () => {
     } });
     await expect(provider.interpret(recommendationRequest)).resolves.toMatchObject({ provider: "ollama" });
     expect(calls).toBe(2);
-    expect(predictLimits).toEqual([350, 700]);
+    expect(predictLimits).toEqual([800, 800]);
   });
 });

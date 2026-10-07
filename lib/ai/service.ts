@@ -13,7 +13,7 @@ export async function runAnalyst(request: AnalystRequest, provider: AnalystProvi
     if (signal?.aborted) throw new AnalystServiceError({ code: "timeout", safeMessage: "The local analyst took too long to respond. Please try again.", retryable: true });
     throw new AnalystServiceError({ code: "provider_unavailable", safeMessage: "The local analyst is temporarily unavailable. Make sure Ollama is running, then retry.", retryable: true });
   }
-  if (!validateInterpretation(result, request.context)) {
+  if (!validateInterpretation(result, request.context, request.question)) {
     throw new AnalystServiceError({ code: "invalid_response", safeMessage: "The local analyst returned a response LedgerAI could not safely verify.", retryable: true });
   }
   return result;
