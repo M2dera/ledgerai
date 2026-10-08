@@ -118,13 +118,14 @@ The existing `/chat` page calls `routeChatMessage` in `lib/chat.ts` locally:
 message → `parseTransactionIntent` → `suggestJournalEntry` → Accounting Core
 validation → a transient chat suggestion. Valid entries display the original
 transaction, named debit/credit lines with the exact amount and currency, and
-**Awaiting approval**. Users can explicitly approve a reviewed suggestion; there
-is no posting action or persistence.
+**Awaiting approval**. Users can explicitly approve a reviewed suggestion and
+then separately post it to the session ledger. Neither action persists data.
 
 The chat page supplies a session-only proposal ID and its local creation date
 as mapper metadata. This date is not evidence of the transaction's accounting
 date. Suggestions exist only in React state and disappear when the page is left
-or reloaded; uploaded financial data and ledger balances are never changed.
+or reloaded. Uploaded financial data is never changed; ledger balances change
+only through the explicit **Post** action.
 
 Unresolved messages show clarifications from the parser's issue codes. For
 `دفعت إيجار 600 د.ك`, the response is
@@ -142,8 +143,8 @@ precision, and chat availability without a dataset.
 ## Phase 2: transaction approval workflow
 
 `lib/accounting/transaction-workflow.ts` wraps the existing
-`SuggestedJournalEntry` in a transient `JournalTransaction` with one of three
-states: `draft`, `awaiting_approval`, or `approved`.
+`SuggestedJournalEntry` in a transient `JournalTransaction` with one of four
+states: `draft`, `awaiting_approval`, `approved`, or `posted`.
 
 - `createDraftTransaction(suggestion)` creates a proposal before review.
 - `createSuggestedTransaction(suggestion)` accepts a proposal already validated
@@ -153,6 +154,8 @@ states: `draft`, `awaiting_approval`, or `approved`.
   `draft → awaiting_approval` and `awaiting_approval → approved`. It reuses the
   Accounting Core validator; invalid entries or transitions are rejected. A
   custom chart can be supplied, otherwise the existing default chart is used.
+  It cannot change status to `posted`; that requires the ledger-aware posting
+  function described below.
 
 The original transaction and journal lines remain visible for review. Clicking
 **Approve** changes that specific suggestion's status to **Approved** and removes
@@ -169,3 +172,40 @@ calls and does not update the ledger, balances, or financial statements.
 transitions, unchanged accounting data, isolated chat approvals, financial Q&A
 compatibility, and absence of posting/persistence. `tests/chat-display.test.ts`
 also covers the explicit button action and the updated status display.
+
+## Phase 2: explicit posting
+
+`postJournalTransaction(transaction, ledger, accounts?)` in
+`lib/accounting/transaction-posting.ts` performs `approved → posted`. It rejects
+drafts, suggestions awaiting approval, already posted transactions, invalid
+entries, and an ID already present in the ledger, including a stale approved
+copy with the same ID. It never edits the original suggestion or journal entry.
+
+The session ledger starts empty and contains only explicitly posted journal
+entries. Uploaded financial summaries are not used as opening balances because
+they do not establish complete journal entries. Existing financial Q&A continues
+to use the uploaded dataset unchanged.
+
+Before returning a posted transaction, the function derives the complete next
+ledger state through the existing `calculateAccountBalances`, `createTrialBalance`,
+`classifyProfitAndLoss`, and `classifyBalanceSheet` functions. Core validation
+remains authoritative and its mixed-currency rule rejects different currencies
+within one ledger. There is no conversion, rounding, account substitution, or
+separate financial calculation system. Any failure leaves the previous ledger
+and transaction unchanged.
+
+The chat shows **Post** only for approved entries. Clicking it atomically updates
+the message status and ledger snapshot in the same React state update. Success
+shows **Posted** and a confirmation, with no further approval or posting button.
+Failure shows an error and retains the previous state. Duplicate clicks cannot
+append a second entry or double the balances.
+
+Posting remains session-only: messages, entries, balances, trial balance, and
+statement snapshots disappear on navigation or reload. It makes no storage or
+network calls. Reverse, void, editing, audit trails, and ledger/statement UIs
+remain outside this implementation.
+
+`tests/transaction-posting.test.ts` covers posting guards, accounting snapshots,
+unchanged journal evidence, duplicate prevention, currency rejection, atomic
+chat updates, financial Q&A compatibility, and absence of persistence.
+`tests/chat-display.test.ts` covers the Post action and its status/confirmation.

@@ -7,7 +7,7 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
-import { approveChatTransaction, routeChatMessage, type ChatMessage } from "@/lib/chat";
+import { approveChatTransaction, createChatState, postChatTransaction, routeChatMessage } from "@/lib/chat";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 
@@ -15,12 +15,12 @@ export default function ChatPage() {
   const { dataset, isReady } = useLedgerData();
   const [busy, setBusy] = useState(false);
   const suggestionSequence = useRef(0);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review and approve suggestions here; entries are never posted or saved." },
-  ]);
+  const [chat, setChat] = useState(() => createChatState([
+    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review and approve an entry, then explicitly post it to the session ledger. Transactions are not saved between visits." },
+  ]));
 
   async function handleSend(message: string) {
-    setMessages((current) => [...current, { sender: "user", text: message }]);
+    setChat((current) => ({ ...current, messages: [...current.messages, { sender: "user", text: message }] }));
     try {
       const createdAt = new Date();
       // Proposal metadata only; the message does not establish a transaction date.
@@ -44,19 +44,23 @@ export default function ChatPage() {
           setBusy(false);
         }
       }, { id: `chat-suggestion-${++suggestionSequence.current}`, date });
-      if (result.route === "transaction") setMessages((current) => [...current, {
+      if (result.route === "transaction") setChat((current) => ({ ...current, messages: [...current.messages, {
         sender: "ai", text: result.text, ...(result.status === "suggested" ? { transaction: createSuggestedTransaction(result.suggestion) } : {}),
-      }]);
-      else if (result.route === "local") setMessages((current) => [...current, { sender: "ai", text: result.text }]);
-      else setMessages((current) => [...current, { sender: "ai", text: "Local Ollama qualitative interpretation only", interpretation: result.interpretation, facts: result.facts }]);
+      }] }));
+      else if (result.route === "local") setChat((current) => ({ ...current, messages: [...current.messages, { sender: "ai", text: result.text }] }));
+      else setChat((current) => ({ ...current, messages: [...current.messages, { sender: "ai", text: "Local Ollama qualitative interpretation only", interpretation: result.interpretation, facts: result.facts }] }));
     } catch (error) {
       const text = error instanceof Error && error.message ? error.message : "The local Ollama analyst could not respond. Check that Ollama is running and qwen3:8b is available, then retry.";
-      setMessages((current) => [...current, { sender: "ai", text }]);
+      setChat((current) => ({ ...current, messages: [...current.messages, { sender: "ai", text }] }));
     }
   }
 
   function handleApprove(transactionId: string) {
-    setMessages((current) => approveChatTransaction(current, transactionId));
+    setChat((current) => ({ ...current, messages: approveChatTransaction(current.messages, transactionId) }));
+  }
+
+  function handlePost(transactionId: string) {
+    setChat((current) => postChatTransaction(current, transactionId));
   }
 
   return (
@@ -82,7 +86,8 @@ export default function ChatPage() {
               <p className="mb-6 text-sm text-zinc-400">Using {dataset.uploadedFile.name} - {dataset.summary.rowsAnalyzed} rows analyzed ({dataset.summary.quality} quality).</p>
               <SuggestedQuestions onSelect={handleSend} />
             </>}
-            <ChatWindow messages={messages} onApprove={handleApprove} />
+            <ChatWindow messages={chat.messages} onApprove={handleApprove} onPost={handlePost} />
+            {chat.postingError && <p className="my-2 text-sm text-red-300" role="alert">{chat.postingError}</p>}
             {busy && <p className="my-2 text-sm text-zinc-400" role="status">Querying local Ollama...</p>}
             <ChatInput onSend={handleSend} />
           </>}

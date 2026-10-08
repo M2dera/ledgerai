@@ -38,7 +38,7 @@ Completed:
 - Arabic and English transaction recognition
 - Missing-account clarification
 - `Awaiting approval` state
-- No posting / no persistence yet
+- Phase 1 scope: suggestions only; no posting / persistence
 
 Important examples already working:
 
@@ -53,7 +53,7 @@ Important examples already working:
 
 ## 🚧 Phase 2 — Accounting Workflow
 
-In progress. Transaction approval is complete; posting is not implemented.
+In progress. Transaction approval and explicit posting to the session ledger are complete.
 
 Completed:
 
@@ -62,11 +62,17 @@ Completed:
 - Review workflow
 - Approve transaction
 - Approved state
+- Post journal entry
+- Posted state
+- Duplicate-posting prevention
+- Posted ledger updates
+- Trial Balance updates after posting
+- Financial statement updates through the Accounting Core
+
+Posting currently remains in memory; transactions and ledger state are not persisted.
 
 Planned:
 
-- Post journal entry
-- Posted state
 - Edit before posting
 - Reverse posted transaction
 - Void / cancel where appropriate
@@ -74,9 +80,6 @@ Planned:
 - Transaction dates
 - Descriptions
 - Audit trail
-- Posted ledger updates
-- Trial Balance updates after posting
-- Financial statement updates after posting
 
 Core workflow:
 
@@ -171,4 +174,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 2 in progress — transaction approval complete; posting remains planned.**
+**Current Status: Phase 2 in progress — approval and session-ledger posting complete.**

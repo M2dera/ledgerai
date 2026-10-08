@@ -2,9 +2,9 @@ import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/accounting/chart-of-accounts";
 import type { ChatMessage } from "@/lib/chat";
 import { formatFinancialFactValue } from "@/lib/financial/unit";
 
-type ChatWindowProps = { messages: ChatMessage[]; onApprove?: (transactionId: string) => void };
+type ChatWindowProps = { messages: ChatMessage[]; onApprove?: (transactionId: string) => void; onPost?: (transactionId: string) => void };
 
-export default function ChatWindow({ messages, onApprove }: ChatWindowProps) {
+export default function ChatWindow({ messages, onApprove, onPost }: ChatWindowProps) {
   return (
     <div className="flex h-[600px] flex-col rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
       <h2 className="mb-6 text-2xl font-bold">LedgerAI Assistant</h2>
@@ -19,8 +19,10 @@ export default function ChatWindow({ messages, onApprove }: ChatWindowProps) {
                   <li key={i}>{line.debit > 0 ? "Debit" : "Credit"} {DEFAULT_CHART_OF_ACCOUNTS.find((account) => account.id === line.accountId)?.name}: {line.debit > 0 ? line.debit : line.credit} {message.transaction!.suggestion.entry.currency}</li>
                 ))}</ul>
               </section>
-              <section><h3 className="font-semibold text-zinc-300">Status</h3><p className={`mt-1 ${message.transaction.status === "approved" ? "text-green-300" : "text-yellow-300"}`} role="status">{message.transaction.status === "approved" ? "Approved" : message.transaction.status === "draft" ? "Draft" : "Awaiting approval"}</p></section>
+              <section><h3 className="font-semibold text-zinc-300">Status</h3><p className={`mt-1 ${message.transaction.status === "approved" || message.transaction.status === "posted" ? "text-green-300" : "text-yellow-300"}`} role="status">{message.transaction.status === "posted" ? "Posted" : message.transaction.status === "approved" ? "Approved" : message.transaction.status === "draft" ? "Draft" : "Awaiting approval"}</p></section>
               {message.transaction.status === "awaiting_approval" && onApprove && <button type="button" onClick={() => onApprove(message.transaction!.suggestion.entry.id)} className="rounded-lg bg-green-500 px-4 py-2 font-semibold text-black hover:bg-green-400">Approve</button>}
+              {message.transaction.status === "approved" && onPost && <button type="button" onClick={() => onPost(message.transaction!.suggestion.entry.id)} className="rounded-lg bg-green-500 px-4 py-2 font-semibold text-black hover:bg-green-400">Post</button>}
+              {message.transaction.status === "posted" && <p className="text-green-300">Transaction posted to the session ledger.</p>}
             </div>}
             {message.sender === "ai" && message.interpretation && <div className="mt-3 space-y-3 border-t border-zinc-700 pt-3 text-sm">
               <section><h3 className="font-semibold text-green-300">Verified Facts</h3>

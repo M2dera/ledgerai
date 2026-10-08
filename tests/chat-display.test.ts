@@ -5,7 +5,7 @@ import ChatPage from "@/app/chat/page";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
 import { createDraftTransaction, createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
-import { approveChatTransaction, routeChatMessage, type ChatMessage } from "@/lib/chat";
+import { approveChatTransaction, createChatState, postChatTransaction, routeChatMessage, type ChatMessage } from "@/lib/chat";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/chat" }));
 vi.mock("@/components/providers/LedgerProvider", () => ({ useLedgerData: vi.fn() }));
@@ -14,11 +14,11 @@ const metadata = { id: "display-suggestion", date: "2026-10-08" };
 
 afterEach(() => vi.restoreAllMocks());
 
-function findApproveButton(node: ReactNode): ReactElement<{ children?: ReactNode; onClick?: () => void }> | undefined {
-  if (Array.isArray(node)) return node.map(findApproveButton).find((button) => button !== undefined);
+function findActionButton(node: ReactNode, label: string): ReactElement<{ children?: ReactNode; onClick?: () => void }> | undefined {
+  if (Array.isArray(node)) return node.map((child) => findActionButton(child, label)).find((button) => button !== undefined);
   if (!isValidElement<{ children?: ReactNode; onClick?: () => void }>(node)) return undefined;
-  if (node.type === "button" && node.props.children === "Approve") return node;
-  return findApproveButton(node.props.children);
+  if (node.type === "button" && node.props.children === label) return node;
+  return findActionButton(node.props.children, label);
 }
 
 describe("accounting suggestions in chat", () => {
@@ -29,6 +29,7 @@ describe("accounting suggestions in chat", () => {
     const html = renderToStaticMarkup(createElement(ChatWindow, {
       messages: [{ sender: "ai", text: result.text, transaction: createSuggestedTransaction(result.suggestion) }],
       onApprove: vi.fn(),
+      onPost: vi.fn(),
     }));
 
     expect(html).toContain("Transaction");
@@ -39,6 +40,7 @@ describe("accounting suggestions in chat", () => {
     expect(html).toContain("Awaiting approval");
     expect(html).toContain('type="button"');
     expect(html).toContain(">Approve</button>");
+    expect(html).not.toContain(">Post</button>");
   });
 
   it("preserves all three accounting decimal places and the explicit currency", async () => {
@@ -62,7 +64,7 @@ describe("accounting suggestions in chat", () => {
     expect(before).toContain("Awaiting approval");
     expect(onApprove).not.toHaveBeenCalled();
 
-    const button = findApproveButton(review);
+    const button = findActionButton(review, "Approve");
     if (!button?.props.onClick) throw new Error("Expected the explicit Approve action.");
     button.props.onClick();
 
@@ -78,12 +80,51 @@ describe("accounting suggestions in chat", () => {
     expect(after).not.toContain("<button");
   });
 
+  it("posts an approved entry only after Post is clicked and displays confirmation", async () => {
+    const result = await routeChatMessage("دفعت إيجار 600 د.ك من البنك", null, vi.fn(), metadata);
+    if (result.route !== "transaction" || result.status !== "suggested") throw new Error("Expected a suggestion.");
+    let state = createChatState(approveChatTransaction([
+      { sender: "ai", text: result.text, transaction: createSuggestedTransaction(result.suggestion) },
+    ], metadata.id));
+    const onPost = vi.fn((id: string) => { state = postChatTransaction(state, id); });
+    const approved = ChatWindow({ messages: state.messages, onApprove: vi.fn(), onPost });
+    const before = renderToStaticMarkup(approved);
+    expect(before).toContain(">Approved</p>");
+    expect(before).toContain(">Post</button>");
+    expect(before).not.toContain(">Approve</button>");
+    expect(state.ledger.journalEntries).toEqual([]);
+    expect(onPost).not.toHaveBeenCalled();
+
+    const button = findActionButton(approved, "Post");
+    if (!button?.props.onClick) throw new Error("Expected the explicit Post action.");
+    button.props.onClick();
+
+    expect(onPost).toHaveBeenCalledWith(metadata.id);
+    expect(state.messages[0]).toMatchObject({ transaction: { status: "posted" } });
+    expect(state.ledger.journalEntries).toEqual([result.suggestion.entry]);
+    expect(state.ledger.journalEntries[0]).toBe(result.suggestion.entry);
+    expect(state.ledger.trialBalance).toMatchObject({ totalDebits: 600, totalCredits: 600, balanced: true });
+    const after = renderToStaticMarkup(createElement(ChatWindow, { messages: state.messages, onApprove: vi.fn(), onPost }));
+    expect(after).toContain(">Posted</p>");
+    expect(after).toContain("Transaction posted to the session ledger.");
+    expect(after).toContain("Debit Rent Expense: 600 KWD");
+    expect(after).toContain("Credit Bank: 600 KWD");
+    expect(after).not.toContain("<button");
+
+    const ledger = state.ledger;
+    button.props.onClick();
+    expect(state.postingError).toBeTruthy();
+    expect(state.ledger).toBe(ledger);
+    expect(state.ledger.journalEntries).toHaveLength(1);
+  });
+
   it("shows draft status without allowing approval before review", async () => {
     const result = await routeChatMessage("paid rent 600 KWD from bank", null, vi.fn(), metadata);
     if (result.route !== "transaction" || result.status !== "suggested") throw new Error("Expected a suggestion.");
     const html = renderToStaticMarkup(createElement(ChatWindow, {
       messages: [{ sender: "ai", text: result.text, transaction: createDraftTransaction(result.suggestion) }],
       onApprove: vi.fn(),
+      onPost: vi.fn(),
     }));
 
     expect(html).toContain(">Draft</p>");

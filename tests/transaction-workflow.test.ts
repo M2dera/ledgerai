@@ -91,11 +91,17 @@ describe("journal transaction approval workflow", () => {
   it.each([
     ["draft", "draft"],
     ["draft", "approved"],
+    ["draft", "posted"],
     ["awaiting_approval", "draft"],
     ["awaiting_approval", "awaiting_approval"],
+    ["awaiting_approval", "posted"],
     ["approved", "draft"],
     ["approved", "awaiting_approval"],
     ["approved", "approved"],
+    ["posted", "draft"],
+    ["posted", "awaiting_approval"],
+    ["posted", "approved"],
+    ["posted", "posted"],
   ] as const)("rejects the invalid transition %s → %s", async (status, nextStatus) => {
     const transaction: JournalTransaction = { status, suggestion: await getSuggestion() };
     freezeRecursively(transaction);
@@ -107,8 +113,8 @@ describe("journal transaction approval workflow", () => {
   it("rejects runtime states outside the defined workflow", async () => {
     const transaction = createSuggestedTransaction(await getSuggestion());
 
-    expect(() => transitionJournalTransaction(transaction, "posted" as JournalTransactionStatus)).toThrow(Error);
-    expect(() => transitionJournalTransaction({ ...transaction, status: "posted" as JournalTransactionStatus }, "approved")).toThrow(Error);
+    expect(() => transitionJournalTransaction(transaction, "cancelled" as JournalTransactionStatus)).toThrow(Error);
+    expect(() => transitionJournalTransaction({ ...transaction, status: "cancelled" as JournalTransactionStatus }, "approved")).toThrow(Error);
     expect(transaction.status).toBe("awaiting_approval");
   });
 

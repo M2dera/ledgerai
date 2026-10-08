@@ -1,6 +1,7 @@
 import { isTransactionStatement, parseTransactionIntent, type TransactionIntentIssue } from "@/lib/accounting/transaction-intent";
 import { suggestJournalEntry, type SuggestedJournalEntry, type SuggestedJournalEntryIssue, type SuggestedJournalEntryOptions } from "@/lib/accounting/suggested-journal-entry";
 import { transitionJournalTransaction, type JournalTransaction } from "@/lib/accounting/transaction-workflow";
+import { createAccountingLedgerState, postJournalTransaction, type AccountingLedgerState } from "@/lib/accounting/transaction-posting";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 import type { FinancialDataset, FinancialFactUnit } from "@/lib/financial/types";
@@ -12,6 +13,30 @@ export type ChatMessage =
 export type TransactionChatResult =
   | { route: "transaction"; status: "suggested"; text: string; suggestion: SuggestedJournalEntry }
   | { route: "transaction"; status: "unresolved" | "unsupported" | "rejected"; text: string; issues: readonly (TransactionIntentIssue | SuggestedJournalEntryIssue)[] };
+
+export type ChatState = { messages: ChatMessage[]; ledger: AccountingLedgerState; postingError?: string };
+
+export function createChatState(messages: ChatMessage[]): ChatState {
+  return { messages, ledger: createAccountingLedgerState() };
+}
+
+/** One atomic update keeps the posted status and ledger consistent, including stale clicks. */
+export function postChatTransaction(state: ChatState, transactionId: string): ChatState {
+  try {
+    const matches = state.messages.filter((message) => message.sender === "ai" && message.transaction?.suggestion.entry.id === transactionId);
+    if (matches.length !== 1) throw new Error("A single matching transaction is required for posting.");
+    const message = matches[0];
+    if (message.sender !== "ai" || !message.transaction) throw new Error("Transaction not found.");
+    const posted = postJournalTransaction(message.transaction, state.ledger);
+    return {
+      messages: state.messages.map((current) => current === message ? { ...message, transaction: posted.transaction } : current),
+      ledger: posted.ledger,
+      postingError: undefined,
+    };
+  } catch (error) {
+    return { ...state, postingError: error instanceof Error ? error.message : "The transaction could not be posted." };
+  }
+}
 
 /** Called only by the explicit approval action; stale clicks leave messages unchanged. */
 export function approveChatTransaction(messages: ChatMessage[], transactionId: string): ChatMessage[] {

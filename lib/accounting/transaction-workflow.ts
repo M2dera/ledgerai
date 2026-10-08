@@ -3,7 +3,7 @@ import type { SuggestedJournalEntry } from "./suggested-journal-entry";
 import type { Account } from "./types";
 import { assertValidJournalEntry } from "./validation";
 
-export type JournalTransactionStatus = "draft" | "awaiting_approval" | "approved";
+export type JournalTransactionStatus = "draft" | "awaiting_approval" | "approved" | "posted";
 
 /** Transient workflow metadata around an existing accounting proposal. */
 export type JournalTransaction = {
@@ -20,7 +20,7 @@ export function createSuggestedTransaction(suggestion: SuggestedJournalEntry): J
   return { status: "awaiting_approval", suggestion };
 }
 
-/** Changes workflow status only. Approval is never posting. */
+/** Review/approval only. Posting requires the ledger-aware postJournalTransaction function. */
 export function transitionJournalTransaction(
   transaction: JournalTransaction,
   nextStatus: JournalTransactionStatus,
