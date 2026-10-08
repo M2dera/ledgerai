@@ -119,6 +119,11 @@ function normalizeText(text: string): string {
     .replace(/\s+/g, " ").trim();
 }
 
+/** Recognizes an attempted clause, without asserting that its evidence resolves. */
+export function isTransactionStatement(description: string): boolean {
+  return /^(?:دفعت|دفعنا|استلمت|استلمنا|بعت|بعنا|شريت|اشتريت|ضخت|ضخيت|استثمرت|paid|we paid|received|we received|sold|we sold|bought|we bought|purchased|invested|we invested|injected)(?: |$)/u.test(normalizeText(description));
+}
+
 function parseAmount(token: string): number | undefined {
   if (!/^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)(?:\.\d{1,3})?$/.test(token)) return undefined;
   const numericText = token.replace(/,/g, "");
@@ -175,7 +180,7 @@ export function parseTransactionIntent(description: unknown): TransactionIntentR
     return incomplete("unsupported", intent, [issue("UNSUPPORTED_TEXT", "Only one nonempty quoted counterparty name is supported; internal markers are not input syntax.")]);
   }
   let text = normalizeText(description.replace(/"([^"\r\n]{1,80})"/g, "@name"));
-  if (!/^(?:دفعت|دفعنا|استلمت|استلمنا|بعت|بعنا|شريت|اشتريت|ضخت|ضخيت|استثمرت|paid|we paid|received|we received|sold|we sold|bought|we bought|purchased|invested|we invested|injected)(?: |$)/u.test(text)) {
+  if (!isTransactionStatement(text)) {
     return incomplete("unsupported", intent, [issue("UNSUPPORTED_TEXT", "The statement must begin with a supported completed transaction action.")]);
   }
   const amounts = [...text.matchAll(AMOUNT_TOKEN)];

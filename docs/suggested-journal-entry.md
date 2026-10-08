@@ -111,3 +111,29 @@ contradictory evidence, supplied-chart safety, amount/currency/provenance
 preservation, input immutability, and real Accounting Core validator calls/failure
 propagation. Existing valid parser fixtures remain in `tests/transaction-intent.test.ts`,
 with asset-specific compatibility coverage added for the new default account.
+
+## Phase 1 chat integration
+
+The existing `/chat` page calls `routeChatMessage` in `lib/chat.ts` locally:
+message → `parseTransactionIntent` → `suggestJournalEntry` → Accounting Core
+validation → a transient chat suggestion. Valid entries display the original
+transaction, named debit/credit lines with the exact amount and currency, and
+**Awaiting approval**. There is no approval/posting action or persistence.
+
+The chat page supplies a session-only proposal ID and its local creation date
+as mapper metadata. This date is not evidence of the transaction's accounting
+date. Suggestions exist only in React state and disappear when the page is left
+or reloaded; uploaded financial data and ledger balances are never changed.
+
+Unresolved messages show clarifications from the parser's issue codes. For
+`دفعت إيجار 600 د.ك`, the response is
+`من أي حساب تم الدفع: البنك أم الصندوق؟`; no account or entry is invented.
+Invalid or unsupported transaction attempts stay local and produce no suggestion.
+Transactions can be described without uploading a dataset. Financial questions
+continue through the unchanged `routeFinancialQuestion` path; only existing
+interpretive/recommendation questions call `/api/analyst`.
+
+`tests/chat-transactions.test.ts` covers routing, mappings, clarifications,
+financial compatibility, validation failure, and absence of posting/persistence.
+`tests/chat-display.test.ts` covers suggestion/clarification display, accounting
+precision, and chat availability without a dataset.
