@@ -7,7 +7,8 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
-import { routeChatMessage, type ChatMessage } from "@/lib/chat";
+import { approveChatTransaction, routeChatMessage, type ChatMessage } from "@/lib/chat";
+import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 
 export default function ChatPage() {
@@ -15,7 +16,7 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const suggestionSequence = useRef(0);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Suggestions await approval and are never posted or saved." },
+    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review and approve suggestions here; entries are never posted or saved." },
   ]);
 
   async function handleSend(message: string) {
@@ -44,7 +45,7 @@ export default function ChatPage() {
         }
       }, { id: `chat-suggestion-${++suggestionSequence.current}`, date });
       if (result.route === "transaction") setMessages((current) => [...current, {
-        sender: "ai", text: result.text, ...(result.status === "suggested" ? { suggestion: result.suggestion } : {}),
+        sender: "ai", text: result.text, ...(result.status === "suggested" ? { transaction: createSuggestedTransaction(result.suggestion) } : {}),
       }]);
       else if (result.route === "local") setMessages((current) => [...current, { sender: "ai", text: result.text }]);
       else setMessages((current) => [...current, { sender: "ai", text: "Local Ollama qualitative interpretation only", interpretation: result.interpretation, facts: result.facts }]);
@@ -52,6 +53,10 @@ export default function ChatPage() {
       const text = error instanceof Error && error.message ? error.message : "The local Ollama analyst could not respond. Check that Ollama is running and qwen3:8b is available, then retry.";
       setMessages((current) => [...current, { sender: "ai", text }]);
     }
+  }
+
+  function handleApprove(transactionId: string) {
+    setMessages((current) => approveChatTransaction(current, transactionId));
   }
 
   return (
@@ -77,7 +82,7 @@ export default function ChatPage() {
               <p className="mb-6 text-sm text-zinc-400">Using {dataset.uploadedFile.name} - {dataset.summary.rowsAnalyzed} rows analyzed ({dataset.summary.quality} quality).</p>
               <SuggestedQuestions onSelect={handleSend} />
             </>}
-            <ChatWindow messages={messages} />
+            <ChatWindow messages={messages} onApprove={handleApprove} />
             {busy && <p className="my-2 text-sm text-zinc-400" role="status">Querying local Ollama...</p>}
             <ChatInput onSend={handleSend} />
           </>}

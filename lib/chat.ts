@@ -1,16 +1,27 @@
 import { isTransactionStatement, parseTransactionIntent, type TransactionIntentIssue } from "@/lib/accounting/transaction-intent";
 import { suggestJournalEntry, type SuggestedJournalEntry, type SuggestedJournalEntryIssue, type SuggestedJournalEntryOptions } from "@/lib/accounting/suggested-journal-entry";
+import { transitionJournalTransaction, type JournalTransaction } from "@/lib/accounting/transaction-workflow";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 import type { FinancialDataset, FinancialFactUnit } from "@/lib/financial/types";
 
 export type ChatMessage =
   | { sender: "user"; text: string }
-  | { sender: "ai"; text: string; suggestion?: SuggestedJournalEntry; interpretation?: AnalystInterpretation; facts?: Array<{ label: string; value: number; unit: FinancialFactUnit }> };
+  | { sender: "ai"; text: string; transaction?: JournalTransaction; interpretation?: AnalystInterpretation; facts?: Array<{ label: string; value: number; unit: FinancialFactUnit }> };
 
 export type TransactionChatResult =
   | { route: "transaction"; status: "suggested"; text: string; suggestion: SuggestedJournalEntry }
   | { route: "transaction"; status: "unresolved" | "unsupported" | "rejected"; text: string; issues: readonly (TransactionIntentIssue | SuggestedJournalEntryIssue)[] };
+
+/** Called only by the explicit approval action; stale clicks leave messages unchanged. */
+export function approveChatTransaction(messages: ChatMessage[], transactionId: string): ChatMessage[] {
+  return messages.map((message) => {
+    if (message.sender !== "ai" || !message.transaction ||
+        message.transaction.suggestion.entry.id !== transactionId ||
+        message.transaction.status !== "awaiting_approval") return message;
+    return { ...message, transaction: transitionJournalTransaction(message.transaction, "approved") };
+  });
+}
 
 const arabicClarifications: Record<TransactionIntentIssue["code"], string> = {
   INVALID_INPUT: "اكتب معاملة واحدة واضحة لا تتجاوز 1000 حرف.",

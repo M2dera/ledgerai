@@ -4,5 +4,6 @@ export * from "./ledger";
 export * from "./statements";
 export * from "./suggested-journal-entry";
 export * from "./transaction-intent";
+export * from "./transaction-workflow";
 export * from "./types";
 export * from "./validation";

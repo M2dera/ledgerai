@@ -112,13 +112,14 @@ preservation, input immutability, and real Accounting Core validator calls/failu
 propagation. Existing valid parser fixtures remain in `tests/transaction-intent.test.ts`,
 with asset-specific compatibility coverage added for the new default account.
 
-## Phase 1 chat integration
+## Chat integration
 
 The existing `/chat` page calls `routeChatMessage` in `lib/chat.ts` locally:
 message → `parseTransactionIntent` → `suggestJournalEntry` → Accounting Core
 validation → a transient chat suggestion. Valid entries display the original
 transaction, named debit/credit lines with the exact amount and currency, and
-**Awaiting approval**. There is no approval/posting action or persistence.
+**Awaiting approval**. Users can explicitly approve a reviewed suggestion; there
+is no posting action or persistence.
 
 The chat page supplies a session-only proposal ID and its local creation date
 as mapper metadata. This date is not evidence of the transaction's accounting
@@ -137,3 +138,34 @@ interpretive/recommendation questions call `/api/analyst`.
 financial compatibility, validation failure, and absence of posting/persistence.
 `tests/chat-display.test.ts` covers suggestion/clarification display, accounting
 precision, and chat availability without a dataset.
+
+## Phase 2: transaction approval workflow
+
+`lib/accounting/transaction-workflow.ts` wraps the existing
+`SuggestedJournalEntry` in a transient `JournalTransaction` with one of three
+states: `draft`, `awaiting_approval`, or `approved`.
+
+- `createDraftTransaction(suggestion)` creates a proposal before review.
+- `createSuggestedTransaction(suggestion)` accepts a proposal already validated
+  by the suggestion engine and starts it in `awaiting_approval`. Chat uses this
+  constructor for every successful suggestion.
+- `transitionJournalTransaction(transaction, nextStatus, accounts?)` allows only
+  `draft → awaiting_approval` and `awaiting_approval → approved`. It reuses the
+  Accounting Core validator; invalid entries or transitions are rejected. A
+  custom chart can be supplied, otherwise the existing default chart is used.
+
+The original transaction and journal lines remain visible for review. Clicking
+**Approve** changes that specific suggestion's status to **Approved** and removes
+its approval button. Drafts cannot be approved before review. Repeated or stale
+clicks do not change an already approved transaction.
+
+Approval changes only workflow status and preserves the exact suggestion,
+intent, entry, amount, currency, accounts, and journal lines. Approved means
+reviewed and accepted; it does not mean posted. All states remain in React memory
+and disappear on navigation or reload. Approval makes no storage or network
+calls and does not update the ledger, balances, or financial statements.
+
+`tests/transaction-workflow.test.ts` covers the state model, valid and invalid
+transitions, unchanged accounting data, isolated chat approvals, financial Q&A
+compatibility, and absence of posting/persistence. `tests/chat-display.test.ts`
+also covers the explicit button action and the updated status display.

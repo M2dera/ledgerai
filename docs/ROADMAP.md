@@ -53,14 +53,18 @@ Important examples already working:
 
 ## 🚧 Phase 2 — Accounting Workflow
 
-Next phase. Do not implement yet.
+In progress. Transaction approval is complete; posting is not implemented.
+
+Completed:
+
+- Draft transaction state
+- Suggested transaction state (`awaiting_approval`)
+- Review workflow
+- Approve transaction
+- Approved state
 
 Planned:
 
-- Draft transaction state
-- Suggested transaction state
-- Review workflow
-- Approve transaction
 - Post journal entry
 - Posted state
 - Edit before posting
@@ -167,4 +171,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 1 complete — ready to begin Phase 2.**
+**Current Status: Phase 2 in progress — transaction approval complete; posting remains planned.**
