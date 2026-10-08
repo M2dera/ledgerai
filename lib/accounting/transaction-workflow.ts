@@ -3,12 +3,14 @@ import type { SuggestedJournalEntry } from "./suggested-journal-entry";
 import type { Account } from "./types";
 import { assertValidJournalEntry } from "./validation";
 
-export type JournalTransactionStatus = "draft" | "awaiting_approval" | "approved" | "posted";
+export type JournalTransactionStatus = "draft" | "awaiting_approval" | "approved" | "posted" | "reversed";
 
 /** Transient workflow metadata around an existing accounting proposal. */
 export type JournalTransaction = {
   readonly status: JournalTransactionStatus;
   readonly suggestion: SuggestedJournalEntry;
+  readonly reversalOfTransactionId?: string;
+  readonly reversedByTransactionId?: string;
 };
 
 export function createDraftTransaction(suggestion: SuggestedJournalEntry): JournalTransaction {

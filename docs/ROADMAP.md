@@ -53,7 +53,7 @@ Important examples already working:
 
 ## 🚧 Phase 2 — Accounting Workflow
 
-In progress. Transaction approval, editing before posting, and explicit posting to the session ledger are complete.
+In progress. Transaction approval, editing before posting, explicit posting to the session ledger, and reversal of posted entries are complete.
 
 Completed:
 
@@ -72,12 +72,18 @@ Completed:
 - Edited approved entries return to `awaiting_approval`
 - Transaction ID preservation and unchanged ledger balances during editing
 - Posted-entry edit protection
+- Reverse a posted journal entry into a new linked transaction awaiting approval
+- Explicit approval and posting of reversing entries through the Accounting Core
+- Original journal entries remain unchanged in the ledger
+- Original transactions become `reversed` only after successful reversal posting
+- Pending, completed, and stale duplicate-reversal protection by transaction ID
+- Reversal-chain protection
+- Ledger and Trial Balance include both original and reversing entries with zero net effect
 
-Editing and posting remain in memory; transactions and ledger state are not persisted. Invalid, unbalanced, invalid-account, and mixed-currency edits are rejected without applying changes.
+Editing, posting, and reversal remain in memory; transactions, reversal references, and ledger state are not persisted. Invalid, unbalanced, invalid-account, and mixed-currency edits are rejected without applying changes. Reversal creation leaves the original posted until the new transaction is approved and posted; posted and reversed originals remain non-editable.
 
 Planned:
 
-- Reverse posted transaction
 - Void / cancel where appropriate
 - Transaction IDs
 - Transaction dates
@@ -178,4 +184,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 2 in progress — approval, edit before posting, and session-ledger posting complete.**
+**Current Status: Phase 2 in progress — approval, edit before posting, session-ledger posting, and reversal of posted entries complete.**

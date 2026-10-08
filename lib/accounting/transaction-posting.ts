@@ -1,6 +1,7 @@
 import { DEFAULT_CHART_OF_ACCOUNTS } from "./chart-of-accounts";
 import { calculateAccountBalances, createTrialBalance } from "./ledger";
 import { classifyBalanceSheet, classifyProfitAndLoss } from "./statements";
+import { assertValidReversalForPosting, type JournalReversalReference } from "./transaction-reversal";
 import type { JournalTransaction } from "./transaction-workflow";
 import type { Account, AccountBalance, BalanceSheetClassification, JournalEntry, ProfitAndLossClassification, TrialBalance } from "./types";
 
@@ -11,6 +12,8 @@ export type AccountingLedgerState = {
   readonly trialBalance: TrialBalance;
   readonly profitAndLoss: ProfitAndLossClassification;
   readonly balanceSheet: BalanceSheetClassification;
+  /** Session-only reservations, including reversals still awaiting approval or posting. */
+  readonly reversalReferences: readonly JournalReversalReference[];
 };
 
 export function createAccountingLedgerState(
@@ -31,6 +34,7 @@ export function createAccountingLedgerState(
     trialBalance: createTrialBalance(journalEntries, accounts),
     profitAndLoss: classifyProfitAndLoss(journalEntries, accounts),
     balanceSheet: classifyBalanceSheet(journalEntries, accounts),
+    reversalReferences: [],
   };
 }
 
@@ -43,6 +47,10 @@ export function postJournalTransaction(
   if (transaction.status !== "approved") {
     throw new Error(`Only approved transactions can be posted; current status is ${transaction.status}.`);
   }
-  const nextLedger = createAccountingLedgerState([...ledger.journalEntries, transaction.suggestion.entry], accounts);
+  assertValidReversalForPosting(transaction, ledger, accounts);
+  const nextLedger = {
+    ...createAccountingLedgerState([...ledger.journalEntries, transaction.suggestion.entry], accounts),
+    reversalReferences: ledger.reversalReferences,
+  };
   return { transaction: { ...transaction, status: "posted" }, ledger: nextLedger };
 }

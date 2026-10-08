@@ -3,6 +3,7 @@ import { suggestJournalEntry, type SuggestedJournalEntry, type SuggestedJournalE
 import { transitionJournalTransaction, type JournalTransaction } from "@/lib/accounting/transaction-workflow";
 import { createAccountingLedgerState, postJournalTransaction, type AccountingLedgerState } from "@/lib/accounting/transaction-posting";
 import { editJournalTransaction } from "@/lib/accounting/transaction-editing";
+import { createJournalReversal, markJournalTransactionReversed } from "@/lib/accounting/transaction-reversal";
 import type { JournalEntry } from "@/lib/accounting/types";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
@@ -21,10 +22,28 @@ export type ChatState = {
   ledger: AccountingLedgerState;
   postingError?: string;
   editingError?: { transactionId: string; message: string };
+  reversalError?: string;
 };
 
 export function createChatState(messages: ChatMessage[]): ChatState {
   return { messages, ledger: createAccountingLedgerState() };
+}
+
+/** Creates a separate reviewable reversal and reserves it in the current session state. */
+export function reverseChatTransaction(state: ChatState, originalTransactionId: string, reversalTransactionId: string): ChatState {
+  try {
+    const transactions = state.messages.flatMap((message) => message.sender === "ai" && message.transaction ? [message.transaction] : []);
+    const reversal = createJournalReversal(originalTransactionId, transactions, state.ledger, reversalTransactionId);
+    return {
+      ...state,
+      messages: [...state.messages, { sender: "ai", text: "Review this reversal, then approve and post it.", transaction: reversal.transaction }],
+      ledger: reversal.ledger,
+      reversalError: undefined,
+      postingError: undefined,
+    };
+  } catch (error) {
+    return { ...state, reversalError: error instanceof Error ? error.message : "The reversal could not be created." };
+  }
 }
 
 /** Applies only a fully validated edit to one message and retains the exact ledger snapshot. */
@@ -56,9 +75,23 @@ export function postChatTransaction(state: ChatState, transactionId: string): Ch
     if (matches.length !== 1) throw new Error("A single matching transaction is required for posting.");
     const message = matches[0];
     if (message.sender !== "ai" || !message.transaction) throw new Error("Transaction not found.");
+    const originalId = message.transaction.reversalOfTransactionId;
+    const originalMatches = originalId === undefined ? [] : state.messages.filter((current) =>
+      current.sender === "ai" && current.transaction?.suggestion.entry.id === originalId);
+    if (originalId !== undefined && originalMatches.length !== 1) {
+      throw new Error("A single matching original transaction is required for reversal posting.");
+    }
+    const originalMessage = originalMatches[0];
     const posted = postJournalTransaction(message.transaction, state.ledger);
+    const reversedOriginal = originalMessage?.sender === "ai" && originalMessage.transaction
+      ? markJournalTransactionReversed(originalMessage.transaction, posted.ledger)
+      : undefined;
     return {
-      messages: state.messages.map((current) => current === message ? { ...message, transaction: posted.transaction } : current),
+      messages: state.messages.map((current) => {
+        if (current === message) return { ...message, transaction: posted.transaction };
+        if (current === originalMessage && current.sender === "ai" && reversedOriginal) return { ...current, transaction: reversedOriginal };
+        return current;
+      }),
       ledger: posted.ledger,
       postingError: undefined,
     };

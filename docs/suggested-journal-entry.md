@@ -143,8 +143,10 @@ precision, and chat availability without a dataset.
 ## Phase 2: transaction approval workflow
 
 `lib/accounting/transaction-workflow.ts` wraps the existing
-`SuggestedJournalEntry` in a transient `JournalTransaction` with one of four
-states: `draft`, `awaiting_approval`, `approved`, or `posted`.
+`SuggestedJournalEntry` in a transient `JournalTransaction` with states
+`draft`, `awaiting_approval`, `approved`, `posted`, or `reversed`. The normal
+workflow still ends at `posted`; `reversed` identifies an original transaction
+only after its separate reversing entry has been approved and posted.
 
 - `createDraftTransaction(suggestion)` creates a proposal before review.
 - `createSuggestedTransaction(suggestion)` accepts a proposal already validated
@@ -202,7 +204,7 @@ append a second entry or double the balances.
 
 Posting remains session-only: messages, entries, balances, trial balance, and
 statement snapshots disappear on navigation or reload. It makes no storage or
-network calls. Reverse, void, audit trails, and ledger/statement UIs
+network calls. Void, audit trails, and ledger/statement UIs
 remain outside this implementation.
 
 `tests/transaction-posting.test.ts` covers posting guards, accounting snapshots,
@@ -229,7 +231,7 @@ the saved entry. The original transaction intent remains visible as source evide
 
 - A valid edit to `awaiting_approval` stays `awaiting_approval`.
 - A valid edit to `approved` returns to `awaiting_approval`, requiring approval again.
-- `posted` entries cannot be edited and never show an Edit action. The ledger ID
+- `posted` and `reversed` entries cannot be edited and never show an Edit action. The ledger ID
   guard also rejects edits from stale unposted copies of a posted transaction.
 
 `editChatTransaction(state, transactionId, entry)` applies the validated edit to
@@ -243,4 +245,77 @@ Editing makes no storage or network calls and is discarded on navigation or relo
 reset, ID preservation, unchanged balances, and later approval/posting.
 `tests/journal-entry-editor.test.ts` covers Edit visibility, draft handling,
 validation errors, Save, and Cancel. Existing posting and financial tests remain
+regression coverage.
+
+## Phase 2: reverse a posted journal entry
+
+**Reverse** creates a separate transaction for review; it does not immediately
+reverse the original or change any account balance. The new transaction starts
+at `awaiting_approval` and requires the same explicit **Approve**, then **Post**,
+actions as other suggestions.
+
+`createJournalReversal(originalId, currentTransactions, ledger, newId, accounts?)`
+in `lib/accounting/transaction-reversal.ts` resolves the original transaction by
+ID from the current transaction collection and checks it against its posted
+ledger entry. It uses the existing Accounting Core validator for the original
+and reversing entries. A successful result contains a new transaction and a
+ledger snapshot reserving that reversal reference; ledger entries, balances,
+trial balance, and financial statements remain unchanged until posting.
+
+The reversing transaction has a new unique ID and `reversalOfTransactionId`
+referencing the original. Its journal entry uses the same date, currency,
+accounts, line order, and exact amounts, with each line's debit and credit
+swapped. Its description clearly identifies the reversal and original ID. No
+currency conversion, rounding, account substitution, or amount inference occurs.
+
+For example, a posted rent payment of 700 KWD debits Rent Expense and credits
+Bank. Its reversing entry debits Bank and credits Rent Expense for 700 KWD.
+Entries with more than two lines reverse every line in the same way.
+
+Reversal creation rejects an unknown original ID, a transaction that is not
+posted, a missing or inconsistent original ledger entry, invalid journal data,
+invalid currency or account references, or a reused new transaction ID. It also
+rejects originals with an existing pending or completed reversal. A reversal
+transaction cannot itself be reversed through this flow, preventing reversal
+chains and circular references.
+
+Duplicate protection uses transaction IDs and the ledger's in-memory
+`reversalReferences`, including the reservation made at creation. Repeated
+actions and stale copies cannot create another reversal while the first is
+awaiting approval or approved, or after it is posted. Unrelated posting retains
+these references. The UI hides Reverse once a reversal is pending, while the
+accounting checks remain authoritative.
+
+The original keeps its ID, intent, entry, and `posted` status during reversal
+creation and approval. Posting the reversal reuses `postJournalTransaction` and
+the existing core calculations. It verifies that the reversal still exactly
+offsets the original; financial edits that break that relationship cannot be
+posted. Existing Edit validation and approval-reset rules continue to apply to
+unposted transactions.
+
+Only after successful posting does the original transaction become `reversed`,
+with `reversedByTransactionId` identifying the posted reversal. Its original
+journal entry is never modified or deleted and remains in the ledger alongside
+the separate reversing entry. Balances and statements include both entries,
+whose combined financial effect is zero. Rejected creation, approval, editing,
+or posting leaves the previous saved transactions and ledger intact.
+
+Chat shows **Reverse** for posted original transactions without a pending
+reversal, and displays a separate reversing transaction with its linked original
+ID and current status. Draft, awaiting-approval, approved, reversed, and reversal
+transactions do not show Reverse. After successful reversal posting, the original
+displays **Reversed** and its linked reversal ID; the reversal displays **Posted**.
+Posted and reversed originals remain non-editable.
+
+Reversal transactions, references, and ledger state remain in React memory and
+disappear on navigation or reload. No persistence, database, authentication,
+audit trail, void, delete, or multi-company behavior is added. Financial Q&A
+continues to use the uploaded dataset unchanged.
+
+`tests/transaction-reversal.test.ts` covers creation guards, every-line inversion,
+currency and amount preservation, new and linked IDs, approval and posting,
+unchanged original entries, status timing, offsetting ledger effects, invalid
+references, pending/completed/stale duplicates, and reversal-chain protection.
+`tests/transaction-reversal-ui.test.ts` covers action visibility and the linked
+reversal display. Existing editing, posting, and financial tests provide
 regression coverage.

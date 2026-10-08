@@ -6,6 +6,7 @@ export * from "./suggested-journal-entry";
 export * from "./transaction-intent";
 export * from "./transaction-editing";
 export * from "./transaction-posting";
+export * from "./transaction-reversal";
 export * from "./transaction-workflow";
 export * from "./types";
 export * from "./validation";
