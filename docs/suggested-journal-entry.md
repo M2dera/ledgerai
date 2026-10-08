@@ -202,10 +202,45 @@ append a second entry or double the balances.
 
 Posting remains session-only: messages, entries, balances, trial balance, and
 statement snapshots disappear on navigation or reload. It makes no storage or
-network calls. Reverse, void, editing, audit trails, and ledger/statement UIs
+network calls. Reverse, void, audit trails, and ledger/statement UIs
 remain outside this implementation.
 
 `tests/transaction-posting.test.ts` covers posting guards, accounting snapshots,
 unchanged journal evidence, duplicate prevention, currency rejection, atomic
 chat updates, financial Q&A compatibility, and absence of persistence.
 `tests/chat-display.test.ts` covers the Post action and its status/confirmation.
+
+## Phase 2: edit journal entry before posting
+
+Chat offers **Edit** for entries awaiting approval or already approved. The form
+holds a separate draft of the date, description, currency, accounts, and journal
+lines. **Cancel** discards the draft. **Save** applies changes only after all
+validation succeeds; an error retains the draft and leaves the saved entry intact.
+Approve and Post are hidden while the form is open.
+
+`editJournalTransaction(transaction, entry, ledger, accounts?)` in
+`lib/accounting/transaction-editing.ts` validates the unchanged transaction ID,
+calendar date, description, and all journal lines through the Accounting Core.
+It rejects invalid amounts, unbalanced entries, unknown accounts, invalid currency
+codes, and currency incompatible with the posted session ledger. Lines use the
+single entry currency. A valid alternate currency is allowed while the ledger is
+empty. Accepted entries and lines are copied so later draft changes cannot mutate
+the saved entry. The original transaction intent remains visible as source evidence.
+
+- A valid edit to `awaiting_approval` stays `awaiting_approval`.
+- A valid edit to `approved` returns to `awaiting_approval`, requiring approval again.
+- `posted` entries cannot be edited and never show an Edit action. The ledger ID
+  guard also rejects edits from stale unposted copies of a posted transaction.
+
+`editChatTransaction(state, transactionId, entry)` applies the validated edit to
+exactly one matching chat message. Success and rejection retain the exact ledger
+snapshot: entries, balances, trial balance, and financial statements do not change.
+Only subsequent explicit approval and posting can update the ledger, using the
+edited entry's data and original ID. Financial Q&A still uses the uploaded dataset.
+
+Editing makes no storage or network calls and is discarded on navigation or reload.
+`tests/transaction-editing.test.ts` covers validation, immutable updates, status
+reset, ID preservation, unchanged balances, and later approval/posting.
+`tests/journal-entry-editor.test.ts` covers Edit visibility, draft handling,
+validation errors, Save, and Cancel. Existing posting and financial tests remain
+regression coverage.

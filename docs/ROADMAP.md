@@ -53,7 +53,7 @@ Important examples already working:
 
 ## 🚧 Phase 2 — Accounting Workflow
 
-In progress. Transaction approval and explicit posting to the session ledger are complete.
+In progress. Transaction approval, editing before posting, and explicit posting to the session ledger are complete.
 
 Completed:
 
@@ -68,12 +68,15 @@ Completed:
 - Posted ledger updates
 - Trial Balance updates after posting
 - Financial statement updates through the Accounting Core
+- Edit unposted journal entries with full validation before saving
+- Edited approved entries return to `awaiting_approval`
+- Transaction ID preservation and unchanged ledger balances during editing
+- Posted-entry edit protection
 
-Posting currently remains in memory; transactions and ledger state are not persisted.
+Editing and posting remain in memory; transactions and ledger state are not persisted. Invalid, unbalanced, invalid-account, and mixed-currency edits are rejected without applying changes.
 
 Planned:
 
-- Edit before posting
 - Reverse posted transaction
 - Void / cancel where appropriate
 - Transaction IDs
@@ -87,6 +90,7 @@ Natural Language\
 → Transaction Intent\
 → Suggested Journal Entry\
 → Review\
+→ Edit and revalidate if needed\
 → Approval\
 → Posting\
 → Ledger\
@@ -174,4 +178,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 2 in progress — approval and session-ledger posting complete.**
+**Current Status: Phase 2 in progress — approval, edit before posting, and session-ledger posting complete.**

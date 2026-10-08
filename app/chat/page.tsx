@@ -7,8 +7,9 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
-import { approveChatTransaction, createChatState, postChatTransaction, routeChatMessage } from "@/lib/chat";
+import { approveChatTransaction, createChatState, editChatTransaction, postChatTransaction, routeChatMessage } from "@/lib/chat";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
+import type { JournalEntry } from "@/lib/accounting/types";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 
 export default function ChatPage() {
@@ -16,7 +17,7 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const suggestionSequence = useRef(0);
   const [chat, setChat] = useState(() => createChatState([
-    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review and approve an entry, then explicitly post it to the session ledger. Transactions are not saved between visits." },
+    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review or edit an unposted entry, approve it, then explicitly post it to the session ledger. Editing an approved entry requires approval again. Transactions are not saved between visits." },
   ]));
 
   async function handleSend(message: string) {
@@ -63,6 +64,10 @@ export default function ChatPage() {
     setChat((current) => postChatTransaction(current, transactionId));
   }
 
+  function handleEdit(transactionId: string, entry: JournalEntry) {
+    setChat((current) => editChatTransaction(current, transactionId, entry));
+  }
+
   return (
     <div className="flex min-h-screen bg-black text-white">
       <Sidebar />
@@ -86,7 +91,7 @@ export default function ChatPage() {
               <p className="mb-6 text-sm text-zinc-400">Using {dataset.uploadedFile.name} - {dataset.summary.rowsAnalyzed} rows analyzed ({dataset.summary.quality} quality).</p>
               <SuggestedQuestions onSelect={handleSend} />
             </>}
-            <ChatWindow messages={chat.messages} onApprove={handleApprove} onPost={handlePost} />
+            <ChatWindow messages={chat.messages} onApprove={handleApprove} onPost={handlePost} onEdit={handleEdit} editingError={chat.editingError} />
             {chat.postingError && <p className="my-2 text-sm text-red-300" role="alert">{chat.postingError}</p>}
             {busy && <p className="my-2 text-sm text-zinc-400" role="status">Querying local Ollama...</p>}
             <ChatInput onSend={handleSend} />

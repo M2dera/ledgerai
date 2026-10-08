@@ -2,6 +2,8 @@ import { isTransactionStatement, parseTransactionIntent, type TransactionIntentI
 import { suggestJournalEntry, type SuggestedJournalEntry, type SuggestedJournalEntryIssue, type SuggestedJournalEntryOptions } from "@/lib/accounting/suggested-journal-entry";
 import { transitionJournalTransaction, type JournalTransaction } from "@/lib/accounting/transaction-workflow";
 import { createAccountingLedgerState, postJournalTransaction, type AccountingLedgerState } from "@/lib/accounting/transaction-posting";
+import { editJournalTransaction } from "@/lib/accounting/transaction-editing";
+import type { JournalEntry } from "@/lib/accounting/types";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 import type { FinancialDataset, FinancialFactUnit } from "@/lib/financial/types";
@@ -14,10 +16,37 @@ export type TransactionChatResult =
   | { route: "transaction"; status: "suggested"; text: string; suggestion: SuggestedJournalEntry }
   | { route: "transaction"; status: "unresolved" | "unsupported" | "rejected"; text: string; issues: readonly (TransactionIntentIssue | SuggestedJournalEntryIssue)[] };
 
-export type ChatState = { messages: ChatMessage[]; ledger: AccountingLedgerState; postingError?: string };
+export type ChatState = {
+  messages: ChatMessage[];
+  ledger: AccountingLedgerState;
+  postingError?: string;
+  editingError?: { transactionId: string; message: string };
+};
 
 export function createChatState(messages: ChatMessage[]): ChatState {
   return { messages, ledger: createAccountingLedgerState() };
+}
+
+/** Applies only a fully validated edit to one message and retains the exact ledger snapshot. */
+export function editChatTransaction(state: ChatState, transactionId: string, entry: JournalEntry): ChatState {
+  try {
+    const matches = state.messages.filter((message) => message.sender === "ai" && message.transaction?.suggestion.entry.id === transactionId);
+    if (matches.length !== 1) throw new Error("A single matching transaction is required for editing.");
+    const message = matches[0];
+    if (message.sender !== "ai" || !message.transaction) throw new Error("Transaction not found.");
+    const edited = editJournalTransaction(message.transaction, entry, state.ledger);
+    return {
+      ...state,
+      messages: state.messages.map((current) => current === message ? { ...message, transaction: edited } : current),
+      editingError: undefined,
+      postingError: undefined,
+    };
+  } catch (error) {
+    return {
+      ...state,
+      editingError: { transactionId, message: error instanceof Error ? error.message : "The journal entry could not be edited." },
+    };
+  }
 }
 
 /** One atomic update keeps the posted status and ledger consistent, including stale clicks. */

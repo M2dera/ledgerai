@@ -30,6 +30,9 @@ Instead of manually searching through spreadsheets, LedgerAI analyzes supported 
 - Deterministic Financial Insights
 - 📈 Smart Analytics
 - 📑 Financial Reports
+- Edit unposted journal entries with validation, then explicitly approve and post to the session ledger
+
+In chat, **Edit** lets you review the date, description, currency, accounts, and debit/credit lines before posting. **Save** applies only a valid, balanced entry and preserves its transaction ID. Editing an approved entry returns it to **Awaiting approval**; posted entries cannot be edited. Editing never changes ledger balances. Journal entries and the ledger remain in memory only. See [the journal workflow documentation](docs/suggested-journal-entry.md) for details.
 
 ---
 
