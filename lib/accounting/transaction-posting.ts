@@ -1,4 +1,5 @@
 import { DEFAULT_CHART_OF_ACCOUNTS } from "./chart-of-accounts";
+import { appendTransactionAudit, type AuditContext } from "./audit-trail";
 import { calculateAccountBalances, createTrialBalance } from "./ledger";
 import { classifyBalanceSheet, classifyProfitAndLoss } from "./statements";
 import { assertValidReversalForPosting, type JournalReversalReference } from "./transaction-reversal";
@@ -43,6 +44,7 @@ export function postJournalTransaction(
   transaction: JournalTransaction,
   ledger: AccountingLedgerState,
   accounts: readonly Account[] = DEFAULT_CHART_OF_ACCOUNTS,
+  auditContext?: AuditContext,
 ): { transaction: JournalTransaction; ledger: AccountingLedgerState } {
   if (transaction.status !== "approved") {
     throw new Error(`Only approved transactions can be posted; current status is ${transaction.status}.`);
@@ -52,5 +54,5 @@ export function postJournalTransaction(
     ...createAccountingLedgerState([...ledger.journalEntries, transaction.suggestion.entry], accounts),
     reversalReferences: ledger.reversalReferences,
   };
-  return { transaction: { ...transaction, status: "posted" }, ledger: nextLedger };
+  return { transaction: appendTransactionAudit(transaction, { ...transaction, status: "posted" }, auditContext), ledger: nextLedger };
 }

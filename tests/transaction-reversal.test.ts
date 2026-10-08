@@ -381,17 +381,26 @@ describe("duplicate and circular reversal protection", () => {
 });
 
 describe("explicit reversal in chat", () => {
-  it("appends a reviewable reversal without changing the original message or accounting balances", () => {
+  it("appends a reviewable reversal and the original's audit event without changing its accounting data", () => {
     const state = postedChatState();
     const original = findTransaction(state, originalId);
+    const originalAudit = original.auditEvents;
     freezeRecursively(state);
     const reversed = reverseChatTransaction(state, originalId, reversalId);
 
     expect(reversed.reversalError).toBeUndefined();
     expect(reversed.messages).toHaveLength(state.messages.length + 1);
-    expect(reversed.messages[0]).toBe(state.messages[0]);
-    expect(findTransaction(reversed, originalId)).toBe(original);
-    expect(findTransaction(reversed, originalId).status).toBe("posted");
+    expect(reversed.messages[0].text).toBe(state.messages[0].text);
+    const updatedOriginal = findTransaction(reversed, originalId);
+    expect(updatedOriginal.suggestion).toBe(original.suggestion);
+    expect(updatedOriginal.suggestion.entry).toBe(original.suggestion.entry);
+    expect(updatedOriginal.status).toBe("posted");
+    expect(updatedOriginal.auditEvents?.slice(0, -1)).toEqual(originalAudit);
+    expect(updatedOriginal.auditEvents?.at(-1)).toMatchObject({
+      type: "transaction_reversal_created", transactionId: originalId, relatedTransactionId: reversalId,
+    });
+    expect(original.auditEvents).toBe(originalAudit);
+    expect(original.auditEvents?.some(({ type }) => type === "transaction_reversal_created")).toBe(false);
     expect(findTransaction(reversed, reversalId)).toMatchObject({ status: "awaiting_approval", reversalOfTransactionId: originalId });
     expect(reversed.ledger.journalEntries).toBe(state.ledger.journalEntries);
     expect(reversed.ledger.balances).toBe(state.ledger.balances);

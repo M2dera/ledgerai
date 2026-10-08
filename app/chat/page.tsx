@@ -9,6 +9,7 @@ import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
 import { approveChatTransaction, createChatState, editChatTransaction, postChatTransaction, reverseChatTransaction, routeChatMessage } from "@/lib/chat";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
+import { captureAuditContext } from "@/lib/accounting/audit-trail";
 import type { JournalEntry } from "@/lib/accounting/types";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 
@@ -45,9 +46,14 @@ export default function ChatPage() {
           setBusy(false);
         }
       }, { id: `chat-suggestion-${++suggestionSequence.current}`, date });
-      if (result.route === "transaction") setChat((current) => ({ ...current, messages: [...current.messages, {
-        sender: "ai", text: result.text, ...(result.status === "suggested" ? { transaction: createSuggestedTransaction(result.suggestion) } : {}),
-      }] }));
+      if (result.route === "transaction") {
+        const transaction = result.status === "suggested"
+          ? createSuggestedTransaction(result.suggestion, captureAuditContext())
+          : undefined;
+        setChat((current) => ({ ...current, messages: [...current.messages, {
+          sender: "ai", text: result.text, ...(transaction ? { transaction } : {}),
+        }] }));
+      }
       else if (result.route === "local") setChat((current) => ({ ...current, messages: [...current.messages, { sender: "ai", text: result.text }] }));
       else setChat((current) => ({ ...current, messages: [...current.messages, { sender: "ai", text: "Local Ollama qualitative interpretation only", interpretation: result.interpretation, facts: result.facts }] }));
     } catch (error) {
@@ -57,20 +63,24 @@ export default function ChatPage() {
   }
 
   function handleApprove(transactionId: string) {
-    setChat((current) => ({ ...current, messages: approveChatTransaction(current.messages, transactionId) }));
+    const auditContext = captureAuditContext();
+    setChat((current) => ({ ...current, messages: approveChatTransaction(current.messages, transactionId, auditContext) }));
   }
 
   function handlePost(transactionId: string) {
-    setChat((current) => postChatTransaction(current, transactionId));
+    const auditContext = captureAuditContext();
+    setChat((current) => postChatTransaction(current, transactionId, auditContext));
   }
 
   function handleEdit(transactionId: string, entry: JournalEntry) {
-    setChat((current) => editChatTransaction(current, transactionId, entry));
+    const auditContext = captureAuditContext();
+    setChat((current) => editChatTransaction(current, transactionId, entry, auditContext));
   }
 
   function handleReverse(transactionId: string) {
     const reversalId = `chat-reversal-${++suggestionSequence.current}`;
-    setChat((current) => reverseChatTransaction(current, transactionId, reversalId));
+    const auditContext = captureAuditContext();
+    setChat((current) => reverseChatTransaction(current, transactionId, reversalId, auditContext));
   }
 
   return (

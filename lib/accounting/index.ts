@@ -1,3 +1,5 @@
+export { captureAuditContext, getTransactionAuditEvents } from "./audit-trail";
+export type { AuditContext, JournalEntryAuditSnapshot, TransactionAuditEvent, TransactionAuditEventType } from "./audit-trail";
 export * from "./chart-of-accounts";
 export * from "./integration";
 export * from "./ledger";

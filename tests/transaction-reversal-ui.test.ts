@@ -131,7 +131,12 @@ describe("posted journal reversal UI", () => {
     action(ui.render(), "Reverse")();
 
     expect(ui.onReverse).toHaveBeenCalledWith(originalId);
-    expect(transactionAt(ui.state, 0)).toEqual(originalSnapshot);
+    expect(transactionAt(ui.state, 0).suggestion).toBe(original.suggestion);
+    expect(transactionAt(ui.state, 0).status).toBe(original.status);
+    expect(transactionAt(ui.state, 0).auditEvents?.slice(0, -1)).toEqual(originalSnapshot.auditEvents);
+    expect(transactionAt(ui.state, 0).auditEvents?.at(-1)).toMatchObject({
+      type: "transaction_reversal_created", transactionId: originalId, relatedTransactionId: reversalId,
+    });
     expect(transactionAt(ui.state, 1)).toMatchObject({
       status: "awaiting_approval", reversalOfTransactionId: originalId,
       suggestion: { entry: { id: reversalId, date: originalEntry.date, currency: "KWD", lines: [
@@ -147,6 +152,9 @@ describe("posted journal reversal UI", () => {
     expect(review).toContain("Transaction ID: ui-reversal-1");
     expect(review).toContain("Reversal of transaction: ui-posted-rent");
     expect(review).toContain("Reversing Journal Entry");
+    expect(review).toContain("Review this reversal, then approve and post it.");
+    expect(review).not.toContain("Reversal approved. Post it to the session ledger.");
+    expect(review).not.toContain("Reversal posted to the session ledger.");
     expect(review).toContain("Debit Bank: 700.125 KWD");
     expect(review).toContain("Credit Rent Expense: 700.125 KWD");
     expect(review).toContain(">Posted</p>");
@@ -164,6 +172,9 @@ describe("posted journal reversal UI", () => {
     expect(ui.state.ledger.journalEntries).toHaveLength(1);
     const approved = renderToStaticMarkup(ui.render());
     expect(approved).toContain("Reversal: ui-reversal-1 · Approved");
+    expect(approved).toContain("Reversal approved. Post it to the session ledger.");
+    expect(approved).not.toContain("Review this reversal, then approve and post it.");
+    expect(approved).not.toContain("Reversal posted to the session ledger.");
     expect(approved).toContain(">Edit</button>");
     expect(approved).toContain(">Post</button>");
 
@@ -182,6 +193,11 @@ describe("posted journal reversal UI", () => {
     expect(posted).toContain("Reversed by transaction: ui-reversal-1");
     expect(posted).toContain(">Posted</p>");
     expect(posted).toContain("Original entry and posted reversal remain in the session ledger.");
+    expect(posted).toContain("Reversal posted to the session ledger.");
+    expect(posted).not.toContain("Review this reversal, then approve and post it.");
+    expect(posted).not.toContain("Reversal approved. Post it to the session ledger.");
+    // The original chat message stays intact while current status drives visible guidance.
+    expect(ui.state.messages[1].text).toBe("Review this reversal, then approve and post it.");
     expect(posted).not.toContain("<button");
   });
 
@@ -207,6 +223,45 @@ describe("posted journal reversal UI", () => {
     expect(ui.state.ledger.journalEntries).toHaveLength(2);
   });
 
+  it("keeps exactly one event per successful action when stale Reverse, Approve, and Post callbacks are replayed", () => {
+    const ui = chatHarness();
+    const staleReverse = action(ui.render(), "Reverse");
+    staleReverse();
+    const pendingAudit = transactionAt(ui.state, 0).auditEvents;
+    staleReverse();
+    expect(transactionAt(ui.state, 0).auditEvents).toBe(pendingAudit);
+
+    const staleApprove = action(ui.render(), "Approve");
+    staleApprove();
+    const approvedAudit = transactionAt(ui.state, 1).auditEvents;
+    staleApprove();
+    expect(transactionAt(ui.state, 1).auditEvents).toBe(approvedAudit);
+
+    const stalePost = action(ui.render(), "Post");
+    stalePost();
+    const originalAudit = transactionAt(ui.state, 0).auditEvents;
+    const reversalAudit = transactionAt(ui.state, 1).auditEvents;
+    stalePost();
+    staleApprove();
+    staleReverse();
+
+    expect(transactionAt(ui.state, 0).auditEvents).toBe(originalAudit);
+    expect(transactionAt(ui.state, 1).auditEvents).toBe(reversalAudit);
+    expect(originalAudit?.map(({ type }) => type)).toEqual([
+      "transaction_created", "transaction_submitted_for_approval", "transaction_approved", "transaction_posted",
+      "transaction_reversal_created", "transaction_reversal_posted", "transaction_marked_reversed",
+    ]);
+    expect(reversalAudit?.map(({ type }) => type)).toEqual([
+      "transaction_created", "transaction_approved", "transaction_posted",
+    ]);
+    for (const events of [originalAudit, reversalAudit]) {
+      expect(new Set(events?.map(({ id }) => id)).size).toBe(events?.length);
+      expect(Object.isFrozen(events)).toBe(true);
+    }
+    expect(ui.state.ledger.journalEntries).toHaveLength(2);
+    expect(ui.state.ledger.balances.every(({ balance }) => balance === 0)).toBe(true);
+  });
+
   it("leaves the original Posted when reversal posting fails", () => {
     const initial = postedState();
     const pending = reverseChatTransaction(initial, originalId, reversalId);
@@ -223,7 +278,9 @@ describe("posted journal reversal UI", () => {
 
     expect(rejected.postingError).toEqual(expect.any(String));
     expect(rejected.ledger).toBe(approved.ledger);
-    expect(transactionAt(rejected, 0)).toBe(transactionAt(initial, 0));
+    expect(transactionAt(rejected, 0)).toBe(transactionAt(pending, 0));
+    expect(transactionAt(rejected, 0).suggestion).toBe(transactionAt(initial, 0).suggestion);
+    expect(transactionAt(rejected, 0).status).toBe("posted");
     expect(html).toContain(">Posted</p>");
     expect(html).not.toContain(">Reversed</p>");
     expect(html).not.toContain(">Reverse</button>");

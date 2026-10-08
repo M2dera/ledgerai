@@ -1,9 +1,11 @@
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/accounting/chart-of-accounts";
+import { getTransactionAuditEvents } from "@/lib/accounting/audit-trail";
 import type { JournalTransaction } from "@/lib/accounting/transaction-workflow";
 import type { JournalEntry } from "@/lib/accounting/types";
 import type { ChatMessage } from "@/lib/chat";
 import { formatFinancialFactValue } from "@/lib/financial/unit";
 import JournalEntryEditor from "./JournalEntryEditor";
+import TransactionAuditTrail from "./TransactionAuditTrail";
 
 type ChatWindowProps = {
   messages: ChatMessage[];
@@ -22,7 +24,16 @@ const statusLabels = {
   reversed: "Reversed",
 };
 
+const reversalMessages: Record<JournalTransaction["status"], string> = {
+  draft: "Reversing journal entry.",
+  awaiting_approval: "Review this reversal, then approve and post it.",
+  approved: "Reversal approved. Post it to the session ledger.",
+  posted: "Reversal posted to the session ledger.",
+  reversed: "Reversal transaction reversed.",
+};
+
 export default function ChatWindow({ messages, onApprove, onPost, onReverse, onEdit, editingError }: ChatWindowProps) {
+  const transactions = messages.flatMap((message) => message.sender === "ai" && message.transaction ? [message.transaction] : []);
   const reversalsByOriginalId = new Map<string, JournalTransaction>();
   for (const message of messages) {
     if (message.sender === "ai" && message.transaction?.reversalOfTransactionId) {
@@ -38,9 +49,12 @@ export default function ChatWindow({ messages, onApprove, onPost, onReverse, onE
           const linkedReversal = message.sender === "ai" && message.transaction
             ? reversalsByOriginalId.get(message.transaction.suggestion.entry.id)
             : undefined;
+          const messageText = message.sender === "ai" && message.transaction?.reversalOfTransactionId
+            ? reversalMessages[message.transaction.status]
+            : message.text;
           return (
           <div key={index} className={`max-w-[90%] rounded-xl px-4 py-3 ${message.sender === "user" ? "ml-auto bg-green-500 text-black" : "bg-zinc-800 text-white"}`}>
-            <p className="whitespace-pre-line" dir="auto">{message.text}</p>
+            <p className="whitespace-pre-line" dir="auto">{messageText}</p>
             {message.sender === "ai" && message.transaction && <div className="mt-3 space-y-3 border-t border-zinc-700 pt-3 text-sm">
               <section><h3 className="font-semibold text-zinc-300">Transaction</h3><p className="mt-1" dir="auto">{message.transaction.suggestion.intent.description}</p>
                 <p className="mt-1 text-zinc-400">Transaction ID: {message.transaction.suggestion.entry.id}</p>
@@ -73,6 +87,7 @@ export default function ChatWindow({ messages, onApprove, onPost, onReverse, onE
               {message.transaction.status === "posted" && <p className="text-green-300">Transaction posted to the session ledger.</p>}
               {message.transaction.status === "posted" && !message.transaction.reversalOfTransactionId && !message.transaction.reversedByTransactionId && !linkedReversal && onReverse && <button type="button" onClick={() => onReverse(message.transaction!.suggestion.entry.id)} className="rounded-lg border border-zinc-600 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-700">Reverse</button>}
               {message.transaction.status === "reversed" && <p className="text-green-300">Original entry and posted reversal remain in the session ledger.</p>}
+              <TransactionAuditTrail events={getTransactionAuditEvents(message.transaction.suggestion.entry.id, transactions)} />
             </div>}
             {message.sender === "ai" && message.interpretation && <div className="mt-3 space-y-3 border-t border-zinc-700 pt-3 text-sm">
               <section><h3 className="font-semibold text-green-300">Verified Facts</h3>

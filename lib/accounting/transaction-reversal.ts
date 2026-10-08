@@ -1,4 +1,5 @@
 import { DEFAULT_CHART_OF_ACCOUNTS } from "./chart-of-accounts";
+import { appendReversalCreationAudit, appendTransactionAudit, captureAuditContext, type AuditContext } from "./audit-trail";
 import type { AccountingLedgerState } from "./transaction-posting";
 import type { JournalTransaction } from "./transaction-workflow";
 import type { Account, JournalEntry } from "./types";
@@ -66,7 +67,8 @@ export function createJournalReversal(
   ledger: AccountingLedgerState,
   reversalTransactionId: string,
   accounts: readonly Account[] = DEFAULT_CHART_OF_ACCOUNTS,
-): { transaction: JournalTransaction; ledger: AccountingLedgerState } {
+  auditContext: AuditContext = captureAuditContext(),
+): { transaction: JournalTransaction; ledger: AccountingLedgerState; originalTransaction: JournalTransaction } {
   const matches = transactions.filter((transaction) => transaction.suggestion.entry.id === originalTransactionId);
   if (matches.length !== 1) throw new Error("A single existing original transaction is required for reversal.");
   const originalTransaction = matches[0];
@@ -100,12 +102,14 @@ export function createJournalReversal(
     lines: original.lines.map(({ accountId, debit, credit }) => ({ accountId, debit: credit, credit: debit })),
   };
   assertExactReversal(entry, original, accounts);
+  const transaction = appendTransactionAudit(undefined, {
+    status: "awaiting_approval",
+    reversalOfTransactionId: originalTransactionId,
+    suggestion: { entry, intent: originalTransaction.suggestion.intent },
+  }, auditContext);
   return {
-    transaction: {
-      status: "awaiting_approval",
-      reversalOfTransactionId: originalTransactionId,
-      suggestion: { entry, intent: originalTransaction.suggestion.intent },
-    },
+    transaction,
+    originalTransaction: appendReversalCreationAudit(originalTransaction, transaction, auditContext),
     ledger: {
       ...ledger,
       reversalReferences: [...ledger.reversalReferences, { originalTransactionId, reversalTransactionId }],
@@ -140,6 +144,7 @@ export function markJournalTransactionReversed(
   transaction: JournalTransaction,
   ledger: AccountingLedgerState,
   accounts: readonly Account[] = DEFAULT_CHART_OF_ACCOUNTS,
+  auditContext?: AuditContext,
 ): JournalTransaction {
   if (transaction.status !== "posted" || transaction.reversalOfTransactionId !== undefined) {
     throw new Error("Only an original posted transaction can be marked reversed.");
@@ -152,5 +157,5 @@ export function markJournalTransactionReversed(
     throw new Error("The reversal must be successfully posted before marking the original reversed.");
   }
   assertExactReversal(reversingEntry, original, accounts);
-  return { ...transaction, status: "reversed", reversedByTransactionId: reversingEntry.id };
+  return appendTransactionAudit(transaction, { ...transaction, status: "reversed", reversedByTransactionId: reversingEntry.id }, auditContext);
 }

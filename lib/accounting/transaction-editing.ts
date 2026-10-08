@@ -1,4 +1,5 @@
 import { DEFAULT_CHART_OF_ACCOUNTS } from "./chart-of-accounts";
+import { appendTransactionAudit, type AuditContext } from "./audit-trail";
 import { calculateLedgerTotals } from "./ledger";
 import type { AccountingLedgerState } from "./transaction-posting";
 import type { JournalTransaction } from "./transaction-workflow";
@@ -19,6 +20,7 @@ export function editJournalTransaction(
   entry: JournalEntry,
   ledger: AccountingLedgerState,
   accounts: readonly Account[] = DEFAULT_CHART_OF_ACCOUNTS,
+  auditContext?: AuditContext,
 ): JournalTransaction {
   if (transaction.status !== "awaiting_approval" && transaction.status !== "approved") {
     throw new Error(`Only unposted entries awaiting approval or approved can be edited; current status is ${transaction.status}.`);
@@ -64,9 +66,9 @@ export function editJournalTransaction(
   if (!Number.isFinite(totals.debitTotal) || !Number.isFinite(totals.creditTotal)) {
     throw new Error("Journal entry totals must be finite.");
   }
-  return {
+  return appendTransactionAudit(transaction, {
     ...transaction,
     status: "awaiting_approval",
     suggestion: { ...transaction.suggestion, entry: candidate },
-  };
+  }, auditContext);
 }

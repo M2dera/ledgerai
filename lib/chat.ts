@@ -4,6 +4,7 @@ import { transitionJournalTransaction, type JournalTransaction } from "@/lib/acc
 import { createAccountingLedgerState, postJournalTransaction, type AccountingLedgerState } from "@/lib/accounting/transaction-posting";
 import { editJournalTransaction } from "@/lib/accounting/transaction-editing";
 import { createJournalReversal, markJournalTransactionReversed } from "@/lib/accounting/transaction-reversal";
+import { captureAuditContext, type AuditContext } from "@/lib/accounting/audit-trail";
 import type { JournalEntry } from "@/lib/accounting/types";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
@@ -30,13 +31,17 @@ export function createChatState(messages: ChatMessage[]): ChatState {
 }
 
 /** Creates a separate reviewable reversal and reserves it in the current session state. */
-export function reverseChatTransaction(state: ChatState, originalTransactionId: string, reversalTransactionId: string): ChatState {
+export function reverseChatTransaction(state: ChatState, originalTransactionId: string, reversalTransactionId: string, auditContext: AuditContext = captureAuditContext()): ChatState {
   try {
     const transactions = state.messages.flatMap((message) => message.sender === "ai" && message.transaction ? [message.transaction] : []);
-    const reversal = createJournalReversal(originalTransactionId, transactions, state.ledger, reversalTransactionId);
+    const reversal = createJournalReversal(originalTransactionId, transactions, state.ledger, reversalTransactionId, undefined, auditContext);
     return {
       ...state,
-      messages: [...state.messages, { sender: "ai", text: "Review this reversal, then approve and post it.", transaction: reversal.transaction }],
+      messages: [
+        ...state.messages.map((message) => message.sender === "ai" && message.transaction?.suggestion.entry.id === originalTransactionId
+          ? { ...message, transaction: reversal.originalTransaction } : message),
+        { sender: "ai", text: "Review this reversal, then approve and post it.", transaction: reversal.transaction },
+      ],
       ledger: reversal.ledger,
       reversalError: undefined,
       postingError: undefined,
@@ -47,13 +52,13 @@ export function reverseChatTransaction(state: ChatState, originalTransactionId: 
 }
 
 /** Applies only a fully validated edit to one message and retains the exact ledger snapshot. */
-export function editChatTransaction(state: ChatState, transactionId: string, entry: JournalEntry): ChatState {
+export function editChatTransaction(state: ChatState, transactionId: string, entry: JournalEntry, auditContext: AuditContext = captureAuditContext()): ChatState {
   try {
     const matches = state.messages.filter((message) => message.sender === "ai" && message.transaction?.suggestion.entry.id === transactionId);
     if (matches.length !== 1) throw new Error("A single matching transaction is required for editing.");
     const message = matches[0];
     if (message.sender !== "ai" || !message.transaction) throw new Error("Transaction not found.");
-    const edited = editJournalTransaction(message.transaction, entry, state.ledger);
+    const edited = editJournalTransaction(message.transaction, entry, state.ledger, undefined, auditContext);
     return {
       ...state,
       messages: state.messages.map((current) => current === message ? { ...message, transaction: edited } : current),
@@ -69,7 +74,7 @@ export function editChatTransaction(state: ChatState, transactionId: string, ent
 }
 
 /** One atomic update keeps the posted status and ledger consistent, including stale clicks. */
-export function postChatTransaction(state: ChatState, transactionId: string): ChatState {
+export function postChatTransaction(state: ChatState, transactionId: string, auditContext: AuditContext = captureAuditContext()): ChatState {
   try {
     const matches = state.messages.filter((message) => message.sender === "ai" && message.transaction?.suggestion.entry.id === transactionId);
     if (matches.length !== 1) throw new Error("A single matching transaction is required for posting.");
@@ -82,9 +87,9 @@ export function postChatTransaction(state: ChatState, transactionId: string): Ch
       throw new Error("A single matching original transaction is required for reversal posting.");
     }
     const originalMessage = originalMatches[0];
-    const posted = postJournalTransaction(message.transaction, state.ledger);
+    const posted = postJournalTransaction(message.transaction, state.ledger, undefined, auditContext);
     const reversedOriginal = originalMessage?.sender === "ai" && originalMessage.transaction
-      ? markJournalTransactionReversed(originalMessage.transaction, posted.ledger)
+      ? markJournalTransactionReversed(originalMessage.transaction, posted.ledger, undefined, auditContext)
       : undefined;
     return {
       messages: state.messages.map((current) => {
@@ -101,12 +106,12 @@ export function postChatTransaction(state: ChatState, transactionId: string): Ch
 }
 
 /** Called only by the explicit approval action; stale clicks leave messages unchanged. */
-export function approveChatTransaction(messages: ChatMessage[], transactionId: string): ChatMessage[] {
+export function approveChatTransaction(messages: ChatMessage[], transactionId: string, auditContext: AuditContext = captureAuditContext()): ChatMessage[] {
   return messages.map((message) => {
     if (message.sender !== "ai" || !message.transaction ||
         message.transaction.suggestion.entry.id !== transactionId ||
         message.transaction.status !== "awaiting_approval") return message;
-    return { ...message, transaction: transitionJournalTransaction(message.transaction, "approved") };
+    return { ...message, transaction: transitionJournalTransaction(message.transaction, "approved", undefined, auditContext) };
   });
 }
 

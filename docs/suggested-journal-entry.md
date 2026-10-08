@@ -204,7 +204,7 @@ append a second entry or double the balances.
 
 Posting remains session-only: messages, entries, balances, trial balance, and
 statement snapshots disappear on navigation or reload. It makes no storage or
-network calls. Void, audit trails, and ledger/statement UIs
+network calls. Void and ledger/statement UIs
 remain outside this implementation.
 
 `tests/transaction-posting.test.ts` covers posting guards, accounting snapshots,
@@ -309,7 +309,7 @@ Posted and reversed originals remain non-editable.
 
 Reversal transactions, references, and ledger state remain in React memory and
 disappear on navigation or reload. No persistence, database, authentication,
-audit trail, void, delete, or multi-company behavior is added. Financial Q&A
+void, delete, or multi-company behavior is added. Financial Q&A
 continues to use the uploaded dataset unchanged.
 
 `tests/transaction-reversal.test.ts` covers creation guards, every-line inversion,
@@ -319,3 +319,81 @@ references, pending/completed/stale duplicates, and reversal-chain protection.
 `tests/transaction-reversal-ui.test.ts` covers action visibility and the linked
 reversal display. Existing editing, posting, and financial tests provide
 regression coverage.
+
+## Phase 2: session-only transaction audit trail
+
+Each transaction carries a readonly `auditEvents` history maintained by the
+reusable accounting audit layer in `lib/accounting/audit-trail.ts`. Creation,
+review, approval, editing, posting, and reversal functions append events only
+after their validation and accounting work succeeds. The UI invokes these
+operations and reads their resulting histories; it does not create audit events.
+Rejected actions, invalid transitions, duplicate posting, and rejected reversals
+leave history unchanged.
+
+The strongly typed event model records an event ID, transaction ID, event type,
+ISO UTC timestamp, previous and new workflow statuses where applicable, related
+transaction ID where applicable, and structured journal-entry metadata. Event IDs
+use the transaction ID and its sequential event number (`transactionId:audit:N`).
+An injectable `AuditContext` supplies the action timestamp, allowing deterministic
+tests and replay of the same operation inputs. Chat captures that timestamp once
+per action before its React state update, so repeated evaluation of an updater
+does not manufacture different event times. Audit timestamps describe lifecycle
+actions and do not change the journal entry's accounting date.
+
+Recorded event types are:
+
+| Event type | Successful operation |
+| --- | --- |
+| `transaction_created` | A draft or awaiting-approval transaction is created. |
+| `transaction_submitted_for_approval` | A draft moves to `awaiting_approval`. |
+| `transaction_edited` | An unposted entry passes edit validation and is saved. |
+| `transaction_approved` | An awaiting-approval transaction moves to `approved`. |
+| `transaction_posted` | An approved transaction is appended to the session ledger. |
+| `transaction_reversal_created` | The original records creation of its linked reversing transaction. |
+| `transaction_reversal_posted` | The original records successful posting of its linked reversing transaction. |
+| `transaction_marked_reversed` | The original transaction becomes `reversed` after its reversal is posted. |
+
+Validated suggestions record creation in `draft`, followed by exactly one
+submission to `awaiting_approval`, with the same captured action timestamp.
+Approval and later edits retain those immutable records. An edit returning an
+approved entry to review records its edit transition without another submission.
+
+Edit metadata contains separate before/after copies of the public journal-entry
+fields: ID, date, description, currency, and each account/debit/credit line. It
+excludes parser evidence and internal validation data. The event also records an
+approved entry's return to `awaiting_approval`; an edit already awaiting approval
+records that unchanged workflow status. Metadata snapshots, events, and history
+arrays are deeply frozen, so later draft changes or new events cannot mutate a
+previous audit record.
+
+The original transaction owns the specialized reversal-created and
+reversal-posted events, followed by its marked-reversed event. Each links to the
+reversing transaction ID. Reversal creation appends to the original's audit
+history while preserving its posted status and original journal entry. The new
+reversing transaction records only its own creation, approval, and posting
+lifecycle, linked to the original ID. Both histories use the same captured
+timestamp for the same action. Each card displays only events whose transaction
+ID matches that card, without importing events through related IDs. Reversal
+posting and marking the original retain the existing atomic update: a rejected
+operation cannot leave a successful post or marked-reversed event in saved
+session state.
+
+Every transaction card has a collapsible **Audit trail** view showing timestamp,
+action, workflow status transition, and related transaction ID when present.
+Expanding the trail also shows each edit's labelled Before and After journal
+lines directly. Reversal guidance follows its current status: review and approve,
+post an approved reversal, or a final posted confirmation after posting succeeds.
+Logging does not change journal lines, amounts, currency, posted entries, ledger
+balances, trial balance, or the existing approval/edit/post/reversal rules.
+
+The audit trail exists only with the current in-memory transaction session and
+disappears on navigation or reload. It adds no database, localStorage, external
+logging, analytics, authentication, permissions, or multi-company behavior.
+Financial Q&A continues to use the uploaded dataset unchanged.
+
+`tests/transaction-audit.test.ts` covers lifecycle events, edit snapshots,
+reversal links and status timing, rejected-operation history preservation,
+immutability, deterministic metadata, and unchanged ledger/accounting behavior.
+`tests/transaction-audit-ui.test.ts` covers the audit display and linked reversal
+history. Existing transaction, posting, editing, reversal, and financial tests
+remain regression coverage.

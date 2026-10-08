@@ -53,7 +53,7 @@ Important examples already working:
 
 ## 🚧 Phase 2 — Accounting Workflow
 
-In progress. Transaction approval, editing before posting, explicit posting to the session ledger, and reversal of posted entries are complete.
+In progress. Transaction approval, editing before posting, explicit posting to the session ledger, reversal of posted entries, and a session-only audit trail are complete.
 
 Completed:
 
@@ -79,8 +79,13 @@ Completed:
 - Pending, completed, and stale duplicate-reversal protection by transaction ID
 - Reversal-chain protection
 - Ledger and Trial Balance include both original and reversing entries with zero net effect
+- Session-only immutable transaction audit events for creation, review, editing, approval, posting, reversal creation/posting, and marking originals reversed
+- Deterministic event IDs and injectable action timestamps with structured before/after edit snapshots
+- Original transactions own specialized reversal audit events; reversing transactions keep their own creation, approval, and posting lifecycle, with related transaction IDs retained
+- Successful operations append audit events through the Accounting Core; rejected actions leave history unchanged
+- Collapsible per-transaction Audit trail displaying time, action, status transition, and related transaction
 
-Editing, posting, and reversal remain in memory; transactions, reversal references, and ledger state are not persisted. Invalid, unbalanced, invalid-account, and mixed-currency edits are rejected without applying changes. Reversal creation leaves the original posted until the new transaction is approved and posted; posted and reversed originals remain non-editable.
+Editing, posting, reversal, and audit history remain in memory; transactions, reversal references, ledger state, and audit events are not persisted. Invalid, unbalanced, invalid-account, and mixed-currency edits are rejected without applying changes or successful audit events. Reversal creation leaves the original posted until the new transaction is approved and posted; posted and reversed originals remain non-editable. Audit logging does not change accounting amounts, journal lines, or balances.
 
 Planned:
 
@@ -88,7 +93,6 @@ Planned:
 - Transaction IDs
 - Transaction dates
 - Descriptions
-- Audit trail
 
 Core workflow:
 
@@ -156,7 +160,7 @@ Planned:
 - Multi-company
 - Users
 - Permissions
-- Audit logs
+- Persistent audit logs across sessions
 
 ## ⏳ Phase 7 — Professional Accounting Platform
 
@@ -184,4 +188,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 2 in progress — approval, edit before posting, session-ledger posting, and reversal of posted entries complete.**
+**Current Status: Phase 2 in progress — approval, edit before posting, session-ledger posting, reversal of posted entries, and session-only transaction audit trail complete.**
