@@ -74,7 +74,8 @@ export function createTrialBalance(entries: readonly JournalEntry[], accounts: r
   });
   const totalDebits = lines.reduce((total, line) => total + line.debitBalance, 0);
   const totalCredits = lines.reduce((total, line) => total + line.creditBalance, 0);
-  return { currency, lines, totalDebits, totalCredits, balanced: Math.abs(totalDebits - totalCredits) <= BALANCE_TOLERANCE };
+  const difference = totalDebits - totalCredits;
+  return { currency, lines, totalDebits, totalCredits, difference, balanced: Math.abs(difference) <= BALANCE_TOLERANCE };
 }
 
 export function getAccount(entries: readonly JournalEntry[], accounts: readonly Account[], accountId: string): AccountBalance | null {

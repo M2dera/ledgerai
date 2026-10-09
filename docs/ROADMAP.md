@@ -110,7 +110,7 @@ Natural Language\
 
 ## 🚧 Phase 3 — Financial Statements
 
-In progress. The General Ledger UI is complete; the remaining financial statement interfaces are planned.
+In progress. The General Ledger and Trial Balance UIs are complete; the remaining financial statement interfaces are planned.
 
 Completed:
 
@@ -120,10 +120,14 @@ Completed:
 - Debit and credit totals and selected-account balances calculated through existing Accounting Core functions
 - Clear period-balance labels, currency display, empty states, and safe handling of invalid ledger data
 - Shared in-memory Chat and accounting session state across client navigation; transactions, audit history, reversal references, and the ID sequence reset on refresh
+- Trial Balance at `/trial-balance` with a sidebar navigation item and the same shared session ledger
+- Every Chart of Accounts row, including zero balances, with account code, name, type, debit balance, and credit balance
+- Net account-balance totals, signed debit-minus-credit difference, and Balanced / Out of balance status supplied by the Accounting Core under its existing `1e-9` tolerance
+- Optional inclusive As of date filter that includes all earlier posted journal dates and preserves core calculation order
+- Explicit core-validated currency, helpful empty states, and safe rejection of invalid, mixed-currency, or nonfinite report data
 
 Planned:
 
-- Trial Balance UI
 - Profit & Loss UI
 - Balance Sheet UI
 - Accounting-driven Dashboard
@@ -131,6 +135,8 @@ Planned:
 - Account-level drill-down beyond the General Ledger account filter
 
 The General Ledger does not persist accounting data. Date-filtered account balances represent movement within the selected period, excluding opening balances. Running balances are omitted because the Accounting Core does not expose balances after each individual journal line.
+
+The Trial Balance is cumulative through the selected journal date, not a period-movement report. Missing or invalid posted journal dates prevent as-of reporting; the all-posted view remains available for valid accounting amounts. As-of reports use the current session's posted journals and their journal dates, not historical posting-time snapshots. Reversals use the original journal date unless edited before posting, so backdated postings and reversals can change an earlier as-of result. Accounting state remains in memory and clears on refresh.
 
 ## ⏳ Phase 4 — AI Accountant
 
@@ -200,4 +206,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 in progress — General Ledger UI complete; Trial Balance, Profit & Loss, Balance Sheet, and accounting-driven Dashboard interfaces remain planned.**
+**Current Status: Phase 3 in progress — General Ledger and Trial Balance UIs complete; Profit & Loss, Balance Sheet, and accounting-driven Dashboard interfaces remain planned.**

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountingSessionProvider, useAccountingSession } from "@/components/providers/AccountingSessionProvider";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import { approveChatTransaction, postChatTransaction, routeChatMessage } from "@/lib/chat";
+import { getTrialBalanceReport } from "@/lib/trial-balance";
 
 type Session = ReturnType<typeof useAccountingSession>;
 type HookFrame = { values: unknown[]; cursor: number };
@@ -37,7 +38,7 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 
-afterEach(() => { hooks.active = null; hooks.session = null; });
+afterEach(() => { hooks.active = null; hooks.session = null; vi.unstubAllGlobals(); });
 
 function ChatRoute() {
   const { chat } = useAccountingSession();
@@ -47,6 +48,14 @@ function ChatRoute() {
 function LedgerRoute() {
   const { chat } = useAccountingSession();
   return createElement("p", null, `${chat.ledger.journalEntries.length} posted entries`);
+}
+
+function TrialBalanceRoute() {
+  const { chat } = useAccountingSession();
+  const report = getTrialBalanceReport(chat.ledger);
+  if (report.status !== "ready") throw new Error(report.message);
+  const { trialBalance } = report;
+  return createElement("p", null, `${trialBalance.totalDebits} ${trialBalance.currency} debits; ${trialBalance.totalCredits} ${trialBalance.currency} credits`);
 }
 
 function mountedSession() {
@@ -77,7 +86,11 @@ describe("shared accounting session", () => {
     expect(html).toContain("Refreshing the page clears chat and the session ledger");
   });
 
-  it("retains chat, the posted ledger, errors, and the ID sequence when route children change", async () => {
+  it("retains the same session through Chat, General Ledger, Trial Balance, and back to Chat", async () => {
+    const storage = { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn() };
+    vi.stubGlobal("window", { localStorage: storage, sessionStorage: storage });
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("sessionStorage", storage);
     const mounted = mountedSession();
     const first = mounted.render(ChatRoute).session;
     const id = first.nextTransactionId("suggestion");
@@ -90,22 +103,36 @@ describe("shared accounting session", () => {
     first.setChat((current) => postChatTransaction(current, id, audit));
     first.setChat((current) => ({ ...current, postingError: "Review the existing entry.", reversalError: "Reversal could not be created." }));
     const posted = mounted.render(ChatRoute).session.chat;
+    const balances = posted.ledger.balances;
+    const snapshot = structuredClone(posted);
 
     const ledger = mounted.render(LedgerRoute);
     expect(ledger.html).toContain("1 posted entries");
     expect(ledger.session.chat).toBe(posted);
+    expect(ledger.session.chat.ledger).toBe(posted.ledger);
     expect(ledger.session.chat.ledger.journalEntries).toEqual([result.suggestion.entry]);
     expect(ledger.session.chat.postingError).toBe("Review the existing entry.");
     expect(ledger.session.chat.reversalError).toBe("Reversal could not be created.");
     const reversalId = ledger.session.nextTransactionId("reversal");
 
+    const trialBalance = mounted.render(TrialBalanceRoute);
+    expect(trialBalance.html).toContain("700.125 KWD debits; 700.125 KWD credits");
+    expect(trialBalance.session.chat).toBe(posted);
+    expect(trialBalance.session.chat.ledger).toBe(posted.ledger);
+    expect(trialBalance.session.chat.ledger.balances).toBe(balances);
+    expect(trialBalance.session.chat.ledger.balances).toEqual(snapshot.ledger.balances);
+
     const returned = mounted.render(ChatRoute);
     expect(returned.session.chat).toBe(posted);
+    expect(returned.session.chat.ledger).toBe(posted.ledger);
+    expect(returned.session.chat.ledger.balances).toBe(balances);
+    expect(returned.session.chat).toEqual(snapshot);
     expect(returned.html).toContain(result.text);
     expect(returned.session.chat.messages.at(-1)).toMatchObject({ transaction: { status: "posted" } });
     expect([
       id, reversalId, returned.session.nextTransactionId("suggestion"), first.nextTransactionId("reversal"),
     ]).toEqual(["chat-suggestion-1", "chat-reversal-2", "chat-suggestion-3", "chat-reversal-4"]);
+    for (const method of Object.values(storage)) expect(method).not.toHaveBeenCalled();
   });
 
   it("starts a fresh session and sequence when the provider is remounted", () => {

@@ -8,8 +8,9 @@ describe("main app navigation", () => {
       { label: "Dashboard", href: "/dashboard" },
       { label: "AI Analyst", href: "/chat" },
       { label: "General Ledger", href: "/ledger" },
+      { label: "Trial Balance", href: "/trial-balance" },
     ]);
-    for (const route of ["/", "/dashboard", "/chat", "/ledger"]) {
+    for (const route of ["/", "/dashboard", "/chat", "/ledger", "/trial-balance"]) {
       expect(mainNavigation.filter(({ href }) => isNavigationActive(route, href))).toHaveLength(1);
     }
     expect(isNavigationActive("/dashboard", "/chat")).toBe(false);

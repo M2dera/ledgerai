@@ -70,6 +70,8 @@ export type TrialBalance = {
   lines: TrialBalanceLine[];
   totalDebits: number;
   totalCredits: number;
+  /** Signed difference between the displayed net debit and credit balances. */
+  difference: number;
   balanced: boolean;
 };
 
