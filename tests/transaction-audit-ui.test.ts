@@ -6,6 +6,7 @@ import ChatInput from "@/components/chat/ChatInput";
 import ChatWindow from "@/components/chat/ChatWindow";
 import TransactionAuditTrail from "@/components/chat/TransactionAuditTrail";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { AccountingSessionProvider, useAccountingSession } from "@/components/providers/AccountingSessionProvider";
 import { getTransactionAuditEvents } from "@/lib/accounting/audit-trail";
 import { parseTransactionIntent } from "@/lib/accounting/transaction-intent";
 import { suggestJournalEntry } from "@/lib/accounting/suggested-journal-entry";
@@ -21,13 +22,20 @@ type HookFrame = {
   betweenReplays?: () => void;
   replayResults: { first: unknown; second: unknown }[];
 };
-const hooks = vi.hoisted(() => ({ active: null as HookFrame | null }));
+const hooks = vi.hoisted(() => ({
+  active: null as HookFrame | null,
+  session: null as ReturnType<typeof useAccountingSession> | null,
+}));
 
 // Replay each updater against the same state, as React can in development.
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
     ...actual,
+    useContext(context: Parameters<typeof actual.useContext>[0]) {
+      if (hooks.active && hooks.session) return hooks.session;
+      return actual.useContext(context);
+    },
     useState(initial: unknown) {
       const frame = hooks.active;
       if (!frame) return actual.useState(initial);
@@ -61,6 +69,7 @@ const context = (second: number) => ({ timestamp: `2026-10-08T09:00:${String(sec
 
 afterEach(() => {
   hooks.active = null;
+  hooks.session = null;
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -105,20 +114,23 @@ function pageHarness(initial: ChatState) {
     uploadFeedback: { status: "idle", message: "", warnings: [], errors: [] }, uploadFile: vi.fn(),
   });
   const frame: HookFrame = {
-    values: [false, { current: 0 }, initial], cursor: 0, replayResults: [],
+    values: [initial, { current: 0 }, false], cursor: 0, replayResults: [],
     betweenReplays: () => vi.setSystemTime(new Date(Date.now() + 1_000)),
   };
   function render() {
     frame.cursor = 0;
     hooks.active = frame;
-    try { return ChatPage(); } finally { hooks.active = null; }
+    try {
+      hooks.session = AccountingSessionProvider({ children: null }).props.value;
+      return ChatPage();
+    } finally { hooks.active = null; hooks.session = null; }
   }
   function windowProps() {
     const window = elements(render()).find((element) => element.type === ChatWindow);
     if (!window) throw new Error("Expected ChatWindow.");
     return (window as ReactElement<ComponentProps<typeof ChatWindow>>).props;
   }
-  return { frame, render, windowProps, get state() { return frame.values[2] as ChatState; } };
+  return { frame, render, windowProps, get state() { return frame.values[0] as ChatState; } };
 }
 
 describe("transaction audit trail display", () => {

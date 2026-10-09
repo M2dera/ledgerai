@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ChatPage from "@/app/chat/page";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { AccountingSessionProvider, useAccountingSession } from "@/components/providers/AccountingSessionProvider";
 import { suggestJournalEntry } from "@/lib/accounting/suggested-journal-entry";
 import { parseTransactionIntent } from "@/lib/accounting/transaction-intent";
 import { createSuggestedTransaction, type JournalTransactionStatus } from "@/lib/accounting/transaction-workflow";
@@ -11,13 +12,20 @@ import type { JournalEntry } from "@/lib/accounting/types";
 import { approveChatTransaction, createChatState, editChatTransaction, postChatTransaction, reverseChatTransaction, type ChatState } from "@/lib/chat";
 
 type HookFrame = { values: unknown[]; cursor: number };
-const hooks = vi.hoisted(() => ({ active: null as HookFrame | null }));
+const hooks = vi.hoisted(() => ({
+  active: null as HookFrame | null,
+  session: null as ReturnType<typeof useAccountingSession> | null,
+}));
 
 // Direct page renders exercise its real functional state updates; SSR uses React hooks.
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
     ...actual,
+    useContext(context: Parameters<typeof actual.useContext>[0]) {
+      if (hooks.active && hooks.session) return hooks.session;
+      return actual.useContext(context);
+    },
     useState(initial: unknown) {
       const frame = hooks.active;
       if (!frame) return actual.useState(initial);
@@ -41,6 +49,7 @@ vi.mock("@/components/providers/LedgerProvider", () => ({ useLedgerData: vi.fn()
 
 afterEach(() => {
   hooks.active = null;
+  hooks.session = null;
   vi.restoreAllMocks();
 });
 
@@ -291,23 +300,26 @@ describe("posted journal reversal UI", () => {
       dataset: null, isReady: true, insights: [], alerts: [],
       uploadFeedback: { status: "idle", message: "", warnings: [], errors: [] }, uploadFile: vi.fn(),
     });
-    const frame: HookFrame = { values: [false, { current: 0 }, postedState()], cursor: 0 };
+    const frame: HookFrame = { values: [postedState(), { current: 0 }, false], cursor: 0 };
     function renderPage() {
       frame.cursor = 0;
       hooks.active = frame;
-      try { return ChatPage(); } finally { hooks.active = null; }
+      try {
+        hooks.session = AccountingSessionProvider({ children: null }).props.value;
+        return ChatPage();
+      } finally { hooks.active = null; hooks.session = null; }
     }
     const page = renderPage();
     const window = elements(page).find((element) => element.type === ChatWindow) as ReactElement<ComponentProps<typeof ChatWindow>> | undefined;
     if (!window?.props.onReverse) throw new Error("Expected a page reversal action.");
     const staleReverse = action(ChatWindow(window.props), "Reverse");
     staleReverse();
-    const pending = frame.values[2] as ChatState;
+    const pending = frame.values[0] as ChatState;
 
     expect(transactionAt(pending, 1).suggestion.entry.id).toBe("chat-reversal-1");
     expect(transactionAt(pending, 0).status).toBe("posted");
     staleReverse();
-    const rejected = frame.values[2] as ChatState;
+    const rejected = frame.values[0] as ChatState;
     expect(rejected.messages).toBe(pending.messages);
     expect(rejected.ledger).toBe(pending.ledger);
     expect(rejected.reversalError).toEqual(expect.any(String));

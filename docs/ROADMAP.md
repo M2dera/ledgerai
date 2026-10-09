@@ -108,17 +108,29 @@ Natural Language\
 
 **Rule:** No transaction should be posted without explicit user approval.
 
-## ⏳ Phase 3 — Financial Statements
+## 🚧 Phase 3 — Financial Statements
+
+In progress. The General Ledger UI is complete; the remaining financial statement interfaces are planned.
+
+Completed:
+
+- General Ledger at `/ledger` with a sidebar navigation item
+- Posted journal lines from the existing Accounting Core, including originals and separately posted reversals
+- Chart of Accounts filter and inclusive date-range filtering for the General Ledger
+- Debit and credit totals and selected-account balances calculated through existing Accounting Core functions
+- Clear period-balance labels, currency display, empty states, and safe handling of invalid ledger data
+- Shared in-memory Chat and accounting session state across client navigation; transactions, audit history, reversal references, and the ID sequence reset on refresh
 
 Planned:
 
-- General Ledger UI
 - Trial Balance UI
 - Profit & Loss UI
 - Balance Sheet UI
 - Accounting-driven Dashboard
-- Period filtering
-- Account-level drill-down
+- Period filtering for the remaining financial statement interfaces
+- Account-level drill-down beyond the General Ledger account filter
+
+The General Ledger does not persist accounting data. Date-filtered account balances represent movement within the selected period, excluding opening balances. Running balances are omitted because the Accounting Core does not expose balances after each individual journal line.
 
 ## ⏳ Phase 4 — AI Accountant
 
@@ -188,4 +200,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 2 in progress — approval, edit before posting, session-ledger posting, reversal of posted entries, and session-only transaction audit trail complete.**
+**Current Status: Phase 3 in progress — General Ledger UI complete; Trial Balance, Profit & Loss, Balance Sheet, and accounting-driven Dashboard interfaces remain planned.**

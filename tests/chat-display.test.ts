@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ChatPage from "@/app/chat/page";
 import ChatWindow from "@/components/chat/ChatWindow";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
+import { AccountingSessionProvider } from "@/components/providers/AccountingSessionProvider";
 import { createDraftTransaction, createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import { approveChatTransaction, createChatState, postChatTransaction, routeChatMessage, type ChatMessage } from "@/lib/chat";
 
@@ -150,7 +151,7 @@ describe("accounting suggestions in chat", () => {
       uploadFeedback: { status: "idle", message: "", warnings: [], errors: [] },
       uploadFile: vi.fn(),
     });
-    const html = renderToStaticMarkup(createElement(ChatPage));
+    const html = renderToStaticMarkup(createElement(AccountingSessionProvider, null, createElement(ChatPage)));
 
     expect(html).toContain("Upload a dataset for financial analysis");
     expect(html).toContain("LedgerAI Assistant");

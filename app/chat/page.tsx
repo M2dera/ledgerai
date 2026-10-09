@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/layout/Sidebar";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import SuggestedQuestions from "@/components/chat/SuggestedQuestions";
 import { useLedgerData } from "@/components/providers/LedgerProvider";
-import { approveChatTransaction, createChatState, editChatTransaction, postChatTransaction, reverseChatTransaction, routeChatMessage } from "@/lib/chat";
+import { useAccountingSession } from "@/components/providers/AccountingSessionProvider";
+import { approveChatTransaction, editChatTransaction, postChatTransaction, reverseChatTransaction, routeChatMessage } from "@/lib/chat";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import { captureAuditContext } from "@/lib/accounting/audit-trail";
 import type { JournalEntry } from "@/lib/accounting/types";
@@ -15,11 +16,8 @@ import type { AnalystInterpretation } from "@/lib/ai/types";
 
 export default function ChatPage() {
   const { dataset, isReady } = useLedgerData();
+  const { chat, setChat, nextTransactionId } = useAccountingSession();
   const [busy, setBusy] = useState(false);
-  const suggestionSequence = useRef(0);
-  const [chat, setChat] = useState(() => createChatState([
-    { sender: "ai", text: "Ask about your uploaded financial data or describe a transaction for a validated accounting suggestion. Review or edit an unposted entry, approve it, then explicitly post it to the session ledger. Editing an approved entry requires approval again. Reverse creates a separate entry that also requires approval and posting. Transactions are not saved between visits." },
-  ]));
 
   async function handleSend(message: string) {
     setChat((current) => ({ ...current, messages: [...current.messages, { sender: "user", text: message }] }));
@@ -45,7 +43,7 @@ export default function ChatPage() {
         } finally {
           setBusy(false);
         }
-      }, { id: `chat-suggestion-${++suggestionSequence.current}`, date });
+      }, { id: nextTransactionId("suggestion"), date });
       if (result.route === "transaction") {
         const transaction = result.status === "suggested"
           ? createSuggestedTransaction(result.suggestion, captureAuditContext())
@@ -78,7 +76,7 @@ export default function ChatPage() {
   }
 
   function handleReverse(transactionId: string) {
-    const reversalId = `chat-reversal-${++suggestionSequence.current}`;
+    const reversalId = nextTransactionId("reversal");
     const auditContext = captureAuditContext();
     setChat((current) => reverseChatTransaction(current, transactionId, reversalId, auditContext));
   }
