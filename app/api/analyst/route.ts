@@ -1,6 +1,8 @@
 import { runAnalyst } from "@/lib/ai/service";
 import { AnalystServiceError } from "@/lib/ai/errors";
 import { DEFAULT_USAGE_POLICY, validateAnalystRequest } from "@/lib/ai/validation";
+import { permissionErrorResponse } from "@/lib/auth/errors";
+import { requireCompanyPermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 const headers = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache", "Content-Type": "application/json" };
@@ -28,6 +30,12 @@ async function readBoundedBody(request: Request): Promise<string | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  try {
+    await requireCompanyPermission("ai:use");
+  } catch (error) {
+    return permissionErrorResponse(error);
+  }
+
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (declaredLength > DEFAULT_USAGE_POLICY.maxRequestBytes) return json({ error: { code: "invalid_request", message: "Request is invalid or too large." } }, 413);
   try {

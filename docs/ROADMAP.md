@@ -204,6 +204,14 @@ Phase 4 implementation scope is complete.
 2. Durable accounting storage, atomic and idempotent posting, immutable audit history, and currency-aware exact arithmetic.
 3. Tested backup and restore, accounting export, retention and deletion controls, and secure deployment, API, and model-egress configuration.
 
+### MVP Hardening — Identity Foundation
+
+Identity and company-context foundations are implemented only to the extent verified: configurable OIDC sign-in, database-backed identity sessions, verified-email invitation enrollment, company memberships and roles, a server-side permission helper, and protection for the current AI/data POST APIs.
+
+Mocked identity/permission tests and static migration checks pass. A live PostgreSQL migration and OIDC provider sign-in were not exercised in this environment.
+
+Accounting entries remain session-only. Existing client-side accounting mutations are not yet protected by server-enforced company authorization. The policy that a person must not approve their own journal entry is not enforced in the current client workflow; both the acting user and creator must be checked in the server-side accounting command service in the next hardening task. LedgerAI is still not ready for real external financial data and is not production-ready.
+
 ## ⏳ Phase 5 — Documents
 
 Planned:
@@ -260,4 +268,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 and Phase 4 implementation scope complete. Local/private prototype ready; external financial-data pilot blocked. LedgerAI is not production-ready.**
+**Current Status: Phase 3 and Phase 4 implementation scope complete. Identity foundation implemented; live PostgreSQL/OIDC integration pending. Local/private prototype ready; external financial-data pilot blocked. LedgerAI is not production-ready.**

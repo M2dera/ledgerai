@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { analyzeData } from "@/lib/analysis/analyzer";
 import { aggregateMonthlyPeriods, comparePeriods } from "@/lib/analysis/periods";
 import { createFinancialContext } from "@/lib/ai/context";
@@ -7,6 +7,8 @@ import { validateAnalystRequest, validateInterpretation } from "@/lib/ai/validat
 import { formatFinancialAmount, formatFinancialFactValue, detectFinancialUnit } from "@/lib/financial/unit";
 import { POST } from "@/app/api/analyst/route";
 import { answerFinancialQuestion, isInterpretiveQuestion } from "@/lib/analysis/chat";
+
+vi.mock("@/lib/auth/permissions", () => ({ requireCompanyPermission: vi.fn(async () => ({ userId: "test-member", companyId: "test-company", role: "accountant" })) }));
 
 const file = { id: "fixture", name: "ledger.csv", size: 1, type: "text/csv", uploadedAt: "2025-01-01T00:00:00.000Z" };
 function dataset(csv: string) {

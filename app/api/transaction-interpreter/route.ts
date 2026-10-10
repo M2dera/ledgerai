@@ -1,6 +1,8 @@
 import { AnalystServiceError } from "@/lib/ai/errors";
 import { createOllamaTransactionInterpreter } from "@/lib/ai/providers/ollama-transaction";
 import { validateTransactionInterpretation } from "@/lib/accounting/transaction-understanding";
+import { permissionErrorResponse } from "@/lib/auth/errors";
+import { requireCompanyPermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 const maxRequestBytes = 8_192;
@@ -29,6 +31,12 @@ async function readBoundedBody(request: Request): Promise<string | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  try {
+    await requireCompanyPermission("ai:use");
+  } catch (error) {
+    return permissionErrorResponse(error);
+  }
+
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (declaredLength > maxRequestBytes) return json({ error: { code: "invalid_request", message: "Request is invalid or too large." } }, 413);
   try {

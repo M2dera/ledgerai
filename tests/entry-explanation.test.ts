@@ -32,6 +32,8 @@ const validModelAnswer = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+vi.mock("@/lib/auth/permissions", () => ({ requireCompanyPermission: vi.fn(async () => ({ userId: "test-member", companyId: "test-company", role: "accountant" })) }));
+
 describe("suggested entry explanation", () => {
   it("derives debit and credit rationales from the Chart of Accounts", () => {
     const facts = createEntryExplanationFacts(sampleEntry);

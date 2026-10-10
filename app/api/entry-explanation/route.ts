@@ -1,6 +1,8 @@
 import { createEntryExplanationFacts, resolveEntryExplanation } from "@/lib/accounting/entry-explanation";
 import type { JournalEntry, JournalEntryLine } from "@/lib/accounting/types";
 import { createOllamaEntryExplanationInterpreter } from "@/lib/ai/providers/ollama-entry-explanation";
+import { permissionErrorResponse } from "@/lib/auth/errors";
+import { requireCompanyPermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 const maxRequestBytes = 16_384;
@@ -51,6 +53,12 @@ function readEntry(value: unknown): JournalEntry | undefined {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  try {
+    await requireCompanyPermission("ai:use");
+  } catch (error) {
+    return permissionErrorResponse(error);
+  }
+
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (declaredLength > maxRequestBytes) return json({ error: "Invalid or oversized entry." }, 413);
   try {

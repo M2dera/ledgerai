@@ -27,6 +27,11 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      <div className="mt-8 border-t border-zinc-800 pt-5">
+        <Link href="/sign-in" className="block rounded-xl px-4 py-3 font-semibold text-zinc-400 hover:bg-zinc-900 hover:text-white">
+          Identity and company access
+        </Link>
+      </div>
     </aside>
   );
 }
