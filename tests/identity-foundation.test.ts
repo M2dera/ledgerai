@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { accounts, companies, companyInvitations, companyMemberships, sessions, users, verificationTokens } from "@/lib/db/schema";
 import { createOidcProvider, isIdentityConfigured } from "@/lib/auth/config";
-import { allowInvitedIdentity } from "@/lib/auth/enrollment";
+import { evaluateInvitedIdentity } from "@/lib/auth/enrollment";
 import { CompanyPermissionError, permissionErrorResponse } from "@/lib/auth/errors";
 import { resolveCompanyPermission, roleHasPermission, requireCompanyPermission } from "@/lib/auth/permissions";
 
@@ -75,29 +75,33 @@ describe("OIDC configuration and invitation enrollment", () => {
 
   it("accepts only a verified identity matching a pending invitation or existing membership", async () => {
     const repository = {
+      hasUser: vi.fn().mockResolvedValue(true),
+      hasEligibleInvitation: vi.fn().mockResolvedValue(false),
       acceptPendingInvitations: vi.fn().mockResolvedValue(1),
       hasActiveMembership: vi.fn().mockResolvedValue(false),
     };
-    await expect(allowInvitedIdentity({ userId: "u-1", email: " OWNER@EXAMPLE.COM ", emailVerified: true, repository, now: new Date("2026-01-01T00:00:00Z") })).resolves.toBe(true);
+    await expect(evaluateInvitedIdentity({ userId: "u-1", email: " OWNER@EXAMPLE.COM ", emailVerified: true, repository, now: new Date("2026-01-01T00:00:00Z") })).resolves.toEqual({ allowed: true });
     expect(repository.acceptPendingInvitations).toHaveBeenCalledWith("u-1", "owner@example.com", new Date("2026-01-01T00:00:00Z"));
 
     repository.acceptPendingInvitations.mockClear();
-    await expect(allowInvitedIdentity({ userId: "u-2", email: "owner@example.com", emailVerified: false, repository })).resolves.toBe(false);
+    await expect(evaluateInvitedIdentity({ userId: "u-2", email: "owner@example.com", emailVerified: false, repository })).resolves.toEqual({ allowed: false, reason: "verified_email_claim_missing_false_or_non_boolean" });
     expect(repository.acceptPendingInvitations).not.toHaveBeenCalled();
 
     repository.acceptPendingInvitations.mockResolvedValue(0);
     repository.hasActiveMembership.mockResolvedValue(true);
-    await expect(allowInvitedIdentity({ userId: "u-3", email: "member@example.com", emailVerified: true, repository })).resolves.toBe(true);
+    await expect(evaluateInvitedIdentity({ userId: "u-3", email: "member@example.com", emailVerified: true, repository })).resolves.toEqual({ allowed: true });
     repository.hasActiveMembership.mockResolvedValue(false);
-    await expect(allowInvitedIdentity({ userId: "u-4", email: "new@example.com", emailVerified: true, repository })).resolves.toBe(false);
+    await expect(evaluateInvitedIdentity({ userId: "u-4", email: "new@example.com", emailVerified: true, repository })).resolves.toEqual({ allowed: false, reason: "invitation_or_membership_not_found" });
   });
 
   it("fails closed when invitation or membership storage fails", async () => {
     const repository = {
+      hasUser: vi.fn().mockResolvedValue(true),
+      hasEligibleInvitation: vi.fn().mockResolvedValue(false),
       acceptPendingInvitations: vi.fn().mockRejectedValue(new Error("database down")),
       hasActiveMembership: vi.fn(),
     };
-    await expect(allowInvitedIdentity({ userId: "u-1", email: "owner@example.com", emailVerified: true, repository })).rejects.toThrow("database down");
+    await expect(evaluateInvitedIdentity({ userId: "u-1", email: "owner@example.com", emailVerified: true, repository })).resolves.toEqual({ allowed: false, reason: "invitation_lookup_error" });
     expect(repository.hasActiveMembership).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,31 @@
 import "server-only";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { companyInvitations, companyMemberships } from "@/lib/db/schema";
+import { companyInvitations, companyMemberships, users } from "@/lib/db/schema";
 import type { InvitationEnrollmentRepository } from "./enrollment";
 
 export const invitationRepository: InvitationEnrollmentRepository = {
+  async hasUser(userId) {
+    const result = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return result.length > 0;
+  },
+
+  async hasEligibleInvitation(normalizedEmail, now) {
+    const pending = await db.select({ id: companyInvitations.id })
+      .from(companyInvitations)
+      .where(and(
+        eq(companyInvitations.email, normalizedEmail),
+        isNull(companyInvitations.acceptedAt),
+        isNull(companyInvitations.revokedAt),
+        gt(companyInvitations.expiresAt, now),
+      ))
+      .limit(2);
+    return pending.length === 1;
+  },
+
   async acceptPendingInvitations(userId, normalizedEmail, now) {
     return db.transaction(async (transaction) => {
       const pending = await transaction

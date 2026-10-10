@@ -2,9 +2,9 @@ import NextAuth from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
 import { accounts, sessions, users, verificationTokens } from "@/lib/db/schema";
-import { allowInvitedIdentity } from "@/lib/auth/enrollment";
 import { createOidcProvider, isIdentityConfigured } from "@/lib/auth/config";
 import { invitationRepository } from "@/lib/auth/invitation-repository";
+import { createIdentitySignInCallback, createIdentityUserCreatedHandler } from "@/lib/auth/sign-in-callback";
 
 const oidcProvider = createOidcProvider();
 const drizzleAdapter = DrizzleAdapter(db, {
@@ -27,6 +27,12 @@ const adapter = {
   },
 };
 
+const signInCallback = createIdentitySignInCallback({
+  isConfigured: isIdentityConfigured,
+  repository: invitationRepository,
+});
+const userCreatedHandler = createIdentityUserCreatedHandler({ repository: invitationRepository });
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter,
   providers: oidcProvider ? [oidcProvider] : [],
@@ -35,23 +41,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: process.env.AUTH_TRUST_HOST === "true",
   pages: { signIn: "/sign-in" },
   callbacks: {
-    async signIn({ user, profile }) {
-      if (!isIdentityConfigured()) return false;
-      const emailVerified = typeof profile === "object" && profile !== null && "email_verified" in profile && profile.email_verified === true;
-      try {
-        return await allowInvitedIdentity({
-          userId: user.id,
-          email: user.email,
-          emailVerified,
-          repository: invitationRepository,
-        });
-      } catch {
-        return false;
-      }
-    },
+    signIn: signInCallback,
     async session({ session, user }) {
       if (session.user) session.user.id = user.id;
       return session;
     },
+  },
+  events: {
+    createUser: userCreatedHandler,
   },
 });
