@@ -5,6 +5,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import FileUpload from "@/components/upload/FileUpload";
 import AnalysisCard from "@/components/dashboard/AnalysisCard";
 import AccountingOverview from "@/components/dashboard/AccountingOverview";
+import AccountingNextActions from "@/components/dashboard/AccountingNextActions";
 import PageHeader from "@/components/common/PageHeader";
 import InsightsPanel from "@/components/dashboard/InsightsPanel";
 import FinancialChart from "@/components/charts/FinancialChart";
@@ -28,6 +29,10 @@ export default function DashboardPage() {
           {dataset && <FileUpload />}
 
           <AccountingOverview ledger={chat.ledger} />
+          <AccountingNextActions
+            ledger={chat.ledger}
+            transactions={chat.messages.flatMap((message) => message.sender === "ai" && message.transaction ? [message.transaction] : [])}
+          />
 
           <section className="mt-8" aria-labelledby="uploaded-analysis-title">
             <h2 id="uploaded-analysis-title" className="text-xl font-semibold">Uploaded spreadsheet analysis</h2>

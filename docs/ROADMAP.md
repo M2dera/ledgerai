@@ -185,10 +185,13 @@ Completed:
 - Posted entries only are included; report-specific currency, malformed-data, inclusive journal-date cutoff, reversal, and read-only behavior is retained
 - Accounting Q&A answers identify their source, clarify ambiguous accounts or unsupported question types, and never use Ollama to calculate amounts
 - Supported question patterns and source distinctions documented in `docs/accounting-questions.md`
+- Deterministic read-only Dashboard next actions use validated Trial Balance, Profit & Loss, Balance Sheet, and posted ledger facts from the shared accounting session
+- Suggested actions cover nonzero canonical Accounts Payable or Accounts Receivable balances, an out-of-balance Trial Balance, expenses exceeding revenue, and navigation between a posted reversal and its original when session references validate
+- Empty sessions receive an insufficient-data message; malformed or mixed-currency accounting data produces no partial suggestions
+- Dashboard next actions identify their source as posted accounting entries in this session and remain separate from uploaded spreadsheet analysis and its AI Analyst `investigateNext` content
+- Next-action analysis and navigation are read-only and do not alter journal entries, transaction workflow, approvals, posting, reversals, audit events, or session storage
 
-Remaining planned work:
-
-- AI suggests next actions
+Phase 4 implementation scope is complete and remains open pending explicit closeout.
 
 ## ⏳ Phase 5 — Documents
 
@@ -246,4 +249,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 complete — General Ledger, Trial Balance, Profit & Loss, Balance Sheet, accounting-driven Dashboard, and account-level drill-down are implemented and verified.**
+**Current Status: Phase 3 complete. Phase 4 implementation scope is complete and remains open pending explicit closeout.**

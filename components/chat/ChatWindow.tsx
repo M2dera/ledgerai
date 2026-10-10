@@ -54,7 +54,11 @@ export default function ChatWindow({ messages, onApprove, onPost, onReverse, onE
             ? reversalMessages[message.transaction.status]
             : message.text;
           return (
-          <div key={index} className={`max-w-[90%] rounded-xl px-4 py-3 ${message.sender === "user" ? "ml-auto bg-green-500 text-black" : "bg-zinc-800 text-white"}`}>
+          <div
+            key={index}
+            id={message.sender === "ai" && message.transaction ? `transaction-${message.transaction.suggestion.entry.id}` : undefined}
+            className={`max-w-[90%] rounded-xl px-4 py-3 ${message.sender === "user" ? "ml-auto bg-green-500 text-black" : "bg-zinc-800 text-white"}`}
+          >
             <p className="whitespace-pre-line" dir="auto">{messageText}</p>
             {message.sender === "ai" && message.transaction && <div className="mt-3 space-y-3 border-t border-zinc-700 pt-3 text-sm">
               <section><h3 className="font-semibold text-zinc-300">Transaction</h3><p className="mt-1" dir="auto">{message.transaction.suggestion.intent.description}</p>
