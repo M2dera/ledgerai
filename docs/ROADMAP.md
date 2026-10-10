@@ -159,9 +159,10 @@ Account rows link to `/ledger?accountId=<account-id>` using stable Chart of Acco
 
 ## 🚧 Phase 4 — AI Accountant
 
-In progress. The first task adds grounded AI-assisted interpretation for clear
-English transaction paraphrases while retaining deterministic Accounting Core
-validation and explicit approval.
+Implementation scope complete. Phase 4 combines validated AI-assisted
+transaction understanding with safe clarification, read-only explanations for
+validated suggested journal entries, deterministic natural-language Q&A over
+posted accounting entries, and deterministic read-only suggested next actions.
 
 Completed:
 
@@ -191,7 +192,17 @@ Completed:
 - Dashboard next actions identify their source as posted accounting entries in this session and remain separate from uploaded spreadsheet analysis and its AI Analyst `investigateNext` content
 - Next-action analysis and navigation are read-only and do not alter journal entries, transaction workflow, approvals, posting, reversals, audit events, or session storage
 
-Phase 4 implementation scope is complete and remains open pending explicit closeout.
+Phase 4 implementation scope is complete.
+
+## MVP Readiness
+
+**Local/private prototype: Ready for developer-led demonstrations.** Users can enter transactions, explicitly approve and post them, and inspect the accounting reports while navigating the app. Accounting transactions, ledger state, and audit history remain in memory and disappear on refresh; use disposable demonstration data only.
+
+**Real external financial data: Not ready for an external pilot and not production-ready.** The following blockers must be addressed first:
+
+1. Authentication, company isolation, and server-enforced permissions for accounting actions.
+2. Durable accounting storage, atomic and idempotent posting, immutable audit history, and currency-aware exact arithmetic.
+3. Tested backup and restore, accounting export, retention and deletion controls, and secure deployment, API, and model-egress configuration.
 
 ## ⏳ Phase 5 — Documents
 
@@ -249,4 +260,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 complete. Phase 4 implementation scope is complete and remains open pending explicit closeout.**
+**Current Status: Phase 3 and Phase 4 implementation scope complete. Local/private prototype ready; external financial-data pilot blocked. LedgerAI is not production-ready.**
