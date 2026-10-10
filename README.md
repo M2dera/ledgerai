@@ -93,17 +93,35 @@ The invite-only identity and company-context foundation uses Auth.js with a conf
 
 Docker Desktop is the only local database prerequisite. The Compose service binds PostgreSQL to `127.0.0.1` and uses a known development-only password; do not reuse it outside a local machine.
 
-1. Copy `.env.example` to `.env.local` and set a unique `AUTH_SECRET`, for example with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"`. Keep `.env.local` out of version control.
+1. Copy `.env.example` to `.env.local` and set a unique `AUTH_SECRET`, for example by running:
+
+   ```powershell
+   node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+   ```
+
+   Keep `.env.local` out of version control.
 2. Configure `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` with a trusted OIDC issuer. Register `http://localhost:3000/api/auth/callback/oidc` as the development callback URL. The issuer must return a verified `email_verified: true` claim.
-3. Start PostgreSQL and apply the checked-in SQL migration:
+3. Start PostgreSQL and apply the checked-in SQL migration, running each command in order:
 
    ```powershell
    docker compose up -d postgres
+   ```
+
+   ```powershell
    npm.cmd run db:migrate
+   ```
+
+   ```powershell
    npm.cmd run dev
    ```
 
-   `DATABASE_URL` defaults in `.env.example` to the local-only Compose database. Migration commands fail clearly if it is absent or the database cannot be reached. Generate a future versioned migration with `npm.cmd run db:generate`; review and commit the resulting SQL migration and snapshot together.
+   `DATABASE_URL` defaults in `.env.example` to the local-only Compose database. Migration commands fail clearly if it is absent or the database cannot be reached. Generate a future versioned migration with:
+
+   ```powershell
+   npm.cmd run db:generate
+   ```
+
+   Review and commit the resulting SQL migration and snapshot together.
 
 4. Create the first company and an owner invitation from the local database. Replace the example name and email. Invitations are lower-cased, expire after seven days, and can be revoked by setting `revoked_at`.
 
@@ -111,14 +129,25 @@ Docker Desktop is the only local database prerequisite. The Compose service bind
    docker compose exec postgres psql -U ledgerai -d ledgerai
    ```
 
-   Then run:
+   Before running the SQL, replace `Example Company` and `owner@example.com` with the intended company name and owner email. Then run:
 
    ```sql
    WITH new_company AS (
-     INSERT INTO companies (name) VALUES ('Example Company') RETURNING id
+     INSERT INTO companies (name)
+     VALUES ('Example Company')
+     RETURNING id
    )
-   INSERT INTO company_invitations (company_id, email, role, expires_at)
-   SELECT id, lower('owner@example.com'), 'owner', now() + interval '7 days'
+   INSERT INTO company_invitations (
+     company_id,
+     email,
+     role,
+     expires_at
+   )
+   SELECT
+     id,
+     lower('owner@example.com'),
+     'owner',
+     now() + interval '7 days'
    FROM new_company;
    ```
 
@@ -130,4 +159,10 @@ The server stores only the database session and OIDC account identity needed for
 
 The pilot's separation-of-duties policy is that a person should not approve their own journal entry. This is not enforced by the current client-side workflow. It must be checked against authenticated actors in the server-side accounting command service in Task 2.
 
-The normal automated suite uses mocked identity behavior and static migration checks. To run the optional PostgreSQL migration integration test, set `TEST_DATABASE_URL` to a dedicated disposable local database and run `npm.cmd test`; the integration test applies migrations and checks the resulting tables and constraints. Do not point it at a database containing data you need to preserve.
+The normal automated suite uses mocked identity behavior and static migration checks. To run the optional PostgreSQL migration integration test, set `TEST_DATABASE_URL` to a dedicated disposable local database and run:
+
+```powershell
+npm.cmd test
+```
+
+The integration test applies migrations and checks the resulting tables and constraints. Do not point it at a database containing data you need to preserve.
