@@ -2,9 +2,12 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/accounting/chart-of-accounts";
 import AnalysisCard from "@/components/dashboard/AnalysisCard";
 import type { AccountingLedgerState } from "@/lib/accounting/transaction-posting";
+import type { Account } from "@/lib/accounting/types";
 import { getDashboardAccountingReport } from "@/lib/dashboard-accounting";
+import { getLedgerAccountHref } from "@/lib/ledger-navigation";
 
 const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 });
 
@@ -13,8 +16,14 @@ function formatAmount(value: number, currency: string): string {
   return `${amount} ${currency}`;
 }
 
-export default function AccountingOverview({ ledger }: { ledger: AccountingLedgerState | null | undefined }) {
-  const report = useMemo(() => getDashboardAccountingReport(ledger), [ledger]);
+export default function AccountingOverview({
+  ledger,
+  accounts = DEFAULT_CHART_OF_ACCOUNTS,
+}: {
+  ledger: AccountingLedgerState | null | undefined;
+  accounts?: readonly Account[];
+}) {
+  const report = useMemo(() => getDashboardAccountingReport(ledger, accounts), [ledger, accounts]);
 
   return (
     <section className="mt-8" aria-labelledby="accounting-overview-title">
@@ -42,8 +51,16 @@ export default function AccountingOverview({ ledger }: { ledger: AccountingLedge
             <AnalysisCard title="Revenue" value={formatAmount(report.revenue, report.currency)} status={report.revenue > 0 ? "success" : "neutral"} />
             <AnalysisCard title="Expenses" value={formatAmount(report.expenses, report.currency)} status={report.expenses > 0 ? "warning" : "neutral"} />
             <AnalysisCard title="Net profit / loss" value={formatAmount(report.netIncome, report.currency)} status={report.netIncome < 0 ? "danger" : report.netIncome > 0 ? "success" : "neutral"} />
-            <AnalysisCard title="Cash balance" value={report.cashBalance ? formatAmount(report.cashBalance.balance, report.currency) : "Unavailable"} status={report.cashBalance && report.cashBalance.balance < 0 ? "danger" : "neutral"} />
-            <AnalysisCard title="Bank balance" value={report.bankBalance ? formatAmount(report.bankBalance.balance, report.currency) : "Unavailable"} status={report.bankBalance && report.bankBalance.balance < 0 ? "danger" : "neutral"} />
+            {report.cashBalance ? (
+              <Link href={getLedgerAccountHref(report.cashBalance.account.id)} aria-label="View Cash account ledger entries" className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-black">
+                <AnalysisCard title="Cash balance" value={formatAmount(report.cashBalance.balance, report.currency)} status={report.cashBalance.balance < 0 ? "danger" : "neutral"} />
+              </Link>
+            ) : <AnalysisCard title="Cash balance" value="Unavailable" />}
+            {report.bankBalance ? (
+              <Link href={getLedgerAccountHref(report.bankBalance.account.id)} aria-label="View Bank account ledger entries" className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-black">
+                <AnalysisCard title="Bank balance" value={formatAmount(report.bankBalance.balance, report.currency)} status={report.bankBalance.balance < 0 ? "danger" : "neutral"} />
+              </Link>
+            ) : <AnalysisCard title="Bank balance" value="Unavailable" />}
           </div>
           <p className="mt-3 text-sm text-zinc-400">Cash and Bank are cumulative account balances across all posted entries. Revenue, expenses, and net profit or loss use the same all-posted period as Profit &amp; Loss.</p>
           {(!report.cashBalance || !report.bankBalance) && <p className="mt-2 text-sm text-zinc-400">A Cash or Bank balance is unavailable when its account is not uniquely defined as an asset in the Chart of Accounts.</p>}

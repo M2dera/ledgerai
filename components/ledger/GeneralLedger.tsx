@@ -12,10 +12,19 @@ function formatAmount(value: number, currency: string | null): string {
   return `${numberFormat.format(value)}${currency ? ` ${currency}` : ""}`;
 }
 
-export default function GeneralLedger({ ledger }: { ledger: AccountingLedgerState | null | undefined }) {
-  const [filters, setFilters] = useState<GeneralLedgerFilters>({});
+export default function GeneralLedger({
+  ledger,
+  initialFilters = {},
+  initialQueryError = null,
+}: {
+  ledger: AccountingLedgerState | null | undefined;
+  initialFilters?: GeneralLedgerFilters;
+  initialQueryError?: string | null;
+}) {
+  const [filters, setFilters] = useState<GeneralLedgerFilters>(() => initialFilters);
+  const [queryError, setQueryError] = useState<string | null>(() => initialQueryError);
   const view = useMemo(() => getGeneralLedgerView(ledger, filters), [ledger, filters]);
-  const hasFilters = Boolean(filters.accountId || filters.startDate || filters.endDate);
+  const hasFilters = Boolean(filters.accountId || filters.startDate || filters.endDate || queryError);
   const controlClass = "mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-400/40";
 
   return (
@@ -29,7 +38,10 @@ export default function GeneralLedger({ ledger }: { ledger: AccountingLedgerStat
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <label className="text-sm font-medium text-zinc-300" htmlFor="ledger-account">
             Account
-            <select id="ledger-account" className={controlClass} value={filters.accountId ?? ""} onChange={(event) => setFilters((current) => ({ ...current, accountId: event.target.value }))}>
+            <select id="ledger-account" className={controlClass} value={filters.accountId ?? ""} onChange={(event) => {
+              setFilters((current) => ({ ...current, accountId: event.target.value }));
+              setQueryError(null);
+            }}>
               <option value="">All accounts</option>
               {DEFAULT_CHART_OF_ACCOUNTS.map((account) => <option key={account.id} value={account.id}>{account.code} - {account.name}</option>)}
             </select>
@@ -43,12 +55,20 @@ export default function GeneralLedger({ ledger }: { ledger: AccountingLedgerStat
             <input id="ledger-end-date" type="date" className={`${controlClass} scheme-dark`} value={filters.endDate ?? ""} onChange={(event) => setFilters((current) => ({ ...current, endDate: event.target.value }))} />
           </label>
           <div className="flex items-end">
-            <button type="button" disabled={!hasFilters} onClick={() => setFilters({})} className="w-full rounded-lg border border-zinc-700 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:cursor-default disabled:opacity-40">Clear filters</button>
+            <button type="button" disabled={!hasFilters} onClick={() => {
+              setFilters({});
+              setQueryError(null);
+            }} className="w-full rounded-lg border border-zinc-700 px-4 py-2 font-semibold text-zinc-200 hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:cursor-default disabled:opacity-40">Clear filters</button>
           </div>
         </div>
       </fieldset>
 
-      {view.status === "error" ? (
+      {queryError ? (
+        <section className="rounded-xl border border-red-500/40 bg-red-500/10 p-5" role="alert">
+          <h2 className="font-semibold text-red-200">Unable to apply the General Ledger link</h2>
+          <p className="mt-2 text-sm text-red-200">{queryError}</p>
+        </section>
+      ) : view.status === "error" ? (
         <section className="rounded-xl border border-red-500/40 bg-red-500/10 p-5" role="alert">
           <h2 className="font-semibold text-red-200">Unable to display the General Ledger</h2>
           <p className="mt-2 text-sm text-red-200">{view.message}</p>

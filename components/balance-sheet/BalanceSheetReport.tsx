@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AccountingLedgerState } from "@/lib/accounting/transaction-posting";
 import type { AccountBalance } from "@/lib/accounting/types";
 import { getBalanceSheetReport } from "@/lib/balance-sheet";
+import { getLedgerAccountHref } from "@/lib/ledger-navigation";
 
 const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 });
 const accountTypeLabels = { asset: "Asset", liability: "Liability", equity: "Equity", revenue: "Revenue", expense: "Expense" };
@@ -42,7 +43,7 @@ function AccountSection({ title, lines, total, currency, asOfDate, earnings }: {
           <tbody className="divide-y divide-zinc-800 bg-zinc-950">
             {lines.map((line) => <tr key={line.account.id} className="align-top hover:bg-zinc-900/60">
               <td className="px-5 py-4 font-mono text-zinc-300">{line.account.code}</td>
-              <th scope="row" className="px-5 py-4 font-medium">{line.account.name}</th>
+                <th scope="row" className="px-5 py-4 font-medium"><Link href={getLedgerAccountHref(line.account.id, { endDate: asOfDate ?? undefined })} aria-label={`View ${line.account.name} ledger entries`} className="rounded underline decoration-zinc-600 underline-offset-4 hover:text-green-300 hover:decoration-green-300 focus:outline-none focus:ring-2 focus:ring-green-400">{line.account.name}</Link></th>
               <td className="px-5 py-4 text-zinc-300">{accountTypeLabels[line.account.type]}</td>
               <td className="whitespace-nowrap px-5 py-4 text-right tabular-nums">{formatAmount(line.balance, currency)}</td>
             </tr>)}

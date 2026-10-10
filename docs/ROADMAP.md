@@ -108,9 +108,9 @@ Natural Language\
 
 **Rule:** No transaction should be posted without explicit user approval.
 
-## 🚧 Phase 3 — Financial Statements
+## ✅ Phase 3 — Financial Statements
 
-In progress. The General Ledger, Trial Balance, Profit & Loss, Balance Sheet, and accounting-driven Dashboard integrations are complete; account-level drill-down remains planned.
+Completed. The General Ledger, Trial Balance, Profit & Loss, Balance Sheet, accounting-driven Dashboard, and account-level drill-down integrations are complete.
 
 Completed:
 
@@ -140,10 +140,10 @@ Completed:
 - Dashboard uses all posted journals as its documented default period because it has no period selector; it preserves posted reversals as separate entries, reports the validated currency, and shows an empty state when no posted journals exist
 - Dashboard labels uploaded spreadsheet analysis as a separate source; its charts, ratios, alerts, and insights continue to use analyzed upload rows and are not combined with accounting journals
 - Dashboard integration tests cover posted/unposted entries, reversals, report agreement, signed balances, currency and source validation, empty state, session navigation updates, and read-only behavior
-
-Planned:
-
-- Account-level drill-down beyond the General Ledger account filter
+- Account-level drill-down links from Trial Balance, Profit & Loss, Balance Sheet account rows, and uniquely identified Dashboard Cash/Bank KPIs to the existing General Ledger account filter
+- General Ledger validates its `accountId` query parameter against the Chart of Accounts, initializes the visible existing filter for valid IDs, and safely blocks ledger rows for invalid IDs until the user changes or clears the filter
+- Drill-down carries inclusive Profit & Loss `startDate` / `endDate` filters and Trial Balance / Balance Sheet `asOfDate` as the General Ledger inclusive `endDate`; Dashboard links add no date filter
+- Focused account drill-down tests cover link targets, date context, query validation, filter changes and clearing, Dashboard account uniqueness, and read-only navigation
 
 The General Ledger does not persist accounting data. Date-filtered account balances represent movement within the selected period, excluding opening balances. Running balances are omitted because the Accounting Core does not expose balances after each individual journal line.
 
@@ -154,6 +154,8 @@ Profit & Loss reports movement within the selected inclusive journal-date period
 The Balance Sheet is cumulative through the selected inclusive journal date, or includes all posted journals when the date is blank. Current earnings mean revenue minus expenses from the current session's posted journals through that same cutoff; there is no fiscal-year boundary or period-close operation. Total equity equals the classified equity-account balances plus the separately displayed current earnings. The report checks `assets - (liabilities + total equity)` against the existing absolute `1e-9` tolerance and retains the actual difference, including differences within tolerance. Account balances are never clamped or adjusted to force the equation to balance. Posted originals and posted reversals both contribute; pending reversals and other unposted transactions do not. Viewing and filtering preserve session transactions, workflow, audit events, and ledger snapshots. Missing or invalid journal dates block as-of reporting while valid all-posted amounts remain available with a warning. Currency validation applies to the complete posted source before filtering; an empty cutoff retains the validated session currency, and an empty session has no established currency. Backdated postings and reversals may change earlier as-of results, which are based on the current posted journals rather than historical posting-time snapshots. Refreshing clears the session; there is no persistence.
 
 The Dashboard shares the root `AccountingSessionProvider` and the Chat state's posted ledger; it does not create another accounting store or mutate transactions. Its all-posted view includes entries with valid amounts even if their journal dates are missing or invalid, and displays a warning with their count. Since it has no date selector, Revenue, Expenses, and Net profit / loss use the same all-posted Profit & Loss report period, while Cash and Bank use cumulative as-of balances from the same all-posted Balance Sheet calculation. Mixed or invalid currencies and malformed posted data produce a safe error state. Cash or Bank is shown only when the corresponding canonical account ID maps uniquely to an asset account. The existing upload charts and analysis remain separate and explicitly identified as spreadsheet-derived. Session accounting data remains in memory and clears on refresh.
+
+Account rows link to `/ledger?accountId=<account-id>` using stable Chart of Accounts IDs. Profit & Loss links retain their inclusive `startDate` and `endDate`; Trial Balance and Balance Sheet as-of dates become the inclusive General Ledger `endDate`; Dashboard Cash/Bank links contain no date boundary. The General Ledger validates URL account IDs against the Chart of Accounts and initializes its existing account control; invalid or repeated account parameters show a safe error without displaying an unfiltered ledger. Users can change or clear the filter through the existing controls.
 
 ## ⏳ Phase 4 — AI Accountant
 
@@ -223,4 +225,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 in progress — General Ledger, Trial Balance, Profit & Loss, Balance Sheet, and accounting-driven Dashboard integrations are complete; account-level drill-down remains planned.**
+**Current Status: Phase 3 complete — General Ledger, Trial Balance, Profit & Loss, Balance Sheet, accounting-driven Dashboard, and account-level drill-down are implemented and verified.**

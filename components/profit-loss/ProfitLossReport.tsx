@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { AccountingLedgerState } from "@/lib/accounting/transaction-posting";
 import { getProfitLossReport, type ProfitLossFilters } from "@/lib/profit-loss";
+import { getLedgerAccountHref } from "@/lib/ledger-navigation";
 
 const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 });
 
@@ -113,7 +114,7 @@ export default function ProfitLossReport({ ledger }: { ledger: AccountingLedgerS
                 <tbody className="divide-y divide-zinc-800 bg-zinc-950">
                   {[...report.profitAndLoss.revenue, ...report.profitAndLoss.expenses].map((line) => <tr key={line.account.id} className="align-top hover:bg-zinc-900/60">
                     <td className="px-5 py-4 font-mono text-zinc-300">{line.account.code}</td>
-                    <th scope="row" className="px-5 py-4 font-medium">{line.account.name}</th>
+                    <th scope="row" className="px-5 py-4 font-medium"><Link href={getLedgerAccountHref(line.account.id, { startDate: report.startDate ?? undefined, endDate: report.endDate ?? undefined })} aria-label={`View ${line.account.name} ledger entries`} className="rounded underline decoration-zinc-600 underline-offset-4 hover:text-green-300 hover:decoration-green-300 focus:outline-none focus:ring-2 focus:ring-green-400">{line.account.name}</Link></th>
                     <td className="px-5 py-4 text-zinc-300">{line.account.type === "revenue" ? "Revenue" : "Expense"}</td>
                     <td className="whitespace-nowrap px-5 py-4 text-right tabular-nums">{formatAmount(line.balance, report.currency)}</td>
                   </tr>)}

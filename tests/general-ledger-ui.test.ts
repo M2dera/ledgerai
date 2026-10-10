@@ -2,6 +2,7 @@ import { createElement, isValidElement, type ComponentProps, type ReactElement, 
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import GeneralLedgerPage from "@/app/ledger/page";
+import LedgerPageClient from "@/components/ledger/LedgerPageClient";
 import GeneralLedger from "@/components/ledger/GeneralLedger";
 import { useAccountingSession } from "@/components/providers/AccountingSessionProvider";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "@/lib/accounting/chart-of-accounts";
@@ -291,10 +292,13 @@ describe("General Ledger UI", () => {
     expect(ledger.journalEntries.map(({ id }) => id)).toEqual(["ledger-capital", originalId]);
   });
 
-  it("reads the shared session ledger on /ledger and exposes its active navigation link", () => {
+  it("reads the shared session ledger on /ledger and exposes its active navigation link", async () => {
     const chat = postedState();
     vi.mocked(useAccountingSession).mockReturnValue({ chat, setChat: vi.fn(), nextTransactionId: vi.fn() });
-    const page = GeneralLedgerPage();
+    const route = await GeneralLedgerPage({ searchParams: Promise.resolve({}) });
+    const client = elements(route).find((element) => element.type === LedgerPageClient) as ReactElement<ComponentProps<typeof LedgerPageClient>> | undefined;
+    expect(client).toBeDefined();
+    const page = LedgerPageClient(client!.props);
     const component = elements(page).find((element) => element.type === GeneralLedger) as ReactElement<ComponentProps<typeof GeneralLedger>> | undefined;
     expect(component?.props.ledger).toBe(chat.ledger);
     const html = renderToStaticMarkup(page);
