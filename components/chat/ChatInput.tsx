@@ -31,7 +31,7 @@ export default function ChatInput({
         type="text"
         value={message}
         onChange={(event) => setMessage(event.target.value)}
-        placeholder="Ask about your financial data..."
+        placeholder="Ask a financial question or describe a transaction..."
         className="flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
       />
 
