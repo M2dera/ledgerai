@@ -13,6 +13,7 @@ export type FinancialQuestionIntent =
 
 export type ChatRoutingResult =
   | { route: "local"; intent: FinancialQuestionIntent; text: string }
+  | { route: "local"; intent: "accounting_ledger"; text: string }
   | { route: "analyst"; intent: "interpretive_financial" | "recommendation_investigation"; interpretation: AnalystInterpretation; facts: Array<{ label: string; value: number; unit: FinancialFactUnit }> };
 
 export type AnalystRequestHandler = (request: AnalystRequest) => Promise<AnalystInterpretation>;

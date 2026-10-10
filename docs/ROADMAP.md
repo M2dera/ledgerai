@@ -179,10 +179,15 @@ Completed:
 - Provider errors, timeouts, malformed output, missing facts, and conflicting evidence safely retain clarification behavior
 - Suggestions remain awaiting explicit approval; the AI path does not approve, post, or persist accounting state
 - Initial supported English paraphrases and trust boundaries documented in `docs/transaction-understanding.md`
+- Chat supports deterministic Arabic and English natural-language questions over the current session's posted accounting entries
+- Ledger-source questions and named-account balance questions route separately from uploaded-spreadsheet financial analysis; generic financial questions retain their workbook behavior
+- Revenue, expenses, net income, account balances, largest expense account, Balance Sheet totals, and Trial Balance status reuse existing Accounting Core calculations and report adapters
+- Posted entries only are included; report-specific currency, malformed-data, inclusive journal-date cutoff, reversal, and read-only behavior is retained
+- Accounting Q&A answers identify their source, clarify ambiguous accounts or unsupported question types, and never use Ollama to calculate amounts
+- Supported question patterns and source distinctions documented in `docs/accounting-questions.md`
 
 Remaining planned work:
 
-- Natural-language accounting interaction
 - AI suggests next actions
 
 ## ⏳ Phase 5 — Documents

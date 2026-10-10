@@ -44,8 +44,9 @@ export default function ChatPage() {
           setBusy(false);
         }
       }, {
-        id: nextTransactionId("suggestion"),
+        id: () => nextTransactionId("suggestion"),
         date,
+        accountingLedger: chat.ledger,
         requestTransactionInterpreter: async (description) => {
           setBusy(true);
           try {

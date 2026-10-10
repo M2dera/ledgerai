@@ -9,6 +9,7 @@ import type { JournalEntry } from "@/lib/accounting/types";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
 import { getMissingSettlementClarification, validateTransactionInterpretation } from "@/lib/accounting/transaction-understanding";
+import { answerAccountingQuestion } from "@/lib/analysis/accounting-question";
 import type { FinancialDataset, FinancialFactUnit } from "@/lib/financial/types";
 
 export type ChatMessage =
@@ -147,8 +148,15 @@ export async function routeChatMessage(
   message: string,
   dataset: FinancialDataset | null,
   requestAnalyst: AnalystRequestHandler,
-  options: Pick<SuggestedJournalEntryOptions, "id" | "date"> & { requestTransactionInterpreter?: TransactionInterpreterHandler },
+  options: Omit<Pick<SuggestedJournalEntryOptions, "date">, "id"> & {
+    id: string | (() => string);
+    requestTransactionInterpreter?: TransactionInterpreterHandler;
+    accountingLedger?: Pick<AccountingLedgerState, "journalEntries">;
+  },
 ): Promise<ChatRoutingResult | TransactionChatResult> {
+  const accountingAnswer = answerAccountingQuestion(message, options.accountingLedger);
+  if (accountingAnswer) return { route: "local", intent: "accounting_ledger", text: accountingAnswer.text };
+
   let parsed = parseTransactionIntent(message);
   if (parsed.status === "unsupported" && !isTransactionStatement(message) && !isUnsupportedTransactionAttempt(message)) {
     return routeFinancialQuestion(message, dataset, requestAnalyst);
@@ -185,7 +193,10 @@ export async function routeChatMessage(
   }
 
   // suggestJournalEntry runs Accounting Core validation before returning a suggestion.
-  const result = suggestJournalEntry(parsed.intent, options);
+  const result = suggestJournalEntry(parsed.intent, {
+    ...options,
+    id: typeof options.id === "function" ? options.id() : options.id,
+  });
   if (result.status === "suggested") {
     return { route: "transaction", status: "suggested", text: assisted ? "AI-assisted draft for review" : "Accounting suggestion", suggestion: result.suggestion, ...(assisted ? { assisted: true } : {}) };
   }
