@@ -165,6 +165,12 @@ validation and explicit approval.
 
 Completed:
 
+- Collapsible "Why this entry?" explanation on valid suggested journal entries awaiting approval
+- Account debit / credit rationale derived from validated journal lines and Chart of Accounts classifications
+- Optional local Ollama wording receives only account IDs, names, classifications, sides, and balance effects; it cannot change journal lines or amounts
+- Strict response validation rejects changed or unsupported account references; deterministic classification-based explanations remain available when Ollama is unavailable or returns invalid output
+- Explanation view is read-only, transient, and hidden for invalid entries, drafts, unresolved messages, and reversals
+- Explanation behavior and trust boundaries documented in `docs/accounting-explanations.md`
 - The deterministic transaction parser remains first; already-resolved transactions do not call Ollama
 - Separate local Ollama transaction interpretation contract; the AI Analyst contract and validation remain unchanged
 - Exact quoted evidence validation against the original description and restricted intent/category/account mappings
@@ -177,7 +183,6 @@ Completed:
 Remaining planned work:
 
 - Natural-language accounting interaction
-- AI explains accounting treatment
 - AI suggests next actions
 
 ## ⏳ Phase 5 — Documents

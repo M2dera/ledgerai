@@ -4,6 +4,7 @@ import type { JournalTransaction } from "@/lib/accounting/transaction-workflow";
 import type { JournalEntry } from "@/lib/accounting/types";
 import type { ChatMessage } from "@/lib/chat";
 import { formatFinancialFactValue } from "@/lib/financial/unit";
+import EntryExplanation from "./EntryExplanation";
 import JournalEntryEditor from "./JournalEntryEditor";
 import TransactionAuditTrail from "./TransactionAuditTrail";
 
@@ -67,6 +68,9 @@ export default function ChatWindow({ messages, onApprove, onPost, onReverse, onE
                   <li key={i}>{line.debit > 0 ? "Debit" : "Credit"} {DEFAULT_CHART_OF_ACCOUNTS.find((account) => account.id === line.accountId)?.name}: {line.debit > 0 ? line.debit : line.credit} {message.transaction!.suggestion.entry.currency}</li>
                 ))}</ul>
               </section>
+              {message.transaction.status === "awaiting_approval" && !message.transaction.reversalOfTransactionId && (
+                <EntryExplanation key={`${message.transaction.suggestion.entry.id}:${JSON.stringify(message.transaction.suggestion.entry.lines)}`} entry={message.transaction.suggestion.entry} />
+              )}
               <section><h3 className="font-semibold text-zinc-300">Status</h3><p className={`mt-1 ${message.transaction.status === "approved" || message.transaction.status === "posted" || message.transaction.status === "reversed" ? "text-green-300" : "text-yellow-300"}`} role="status">{statusLabels[message.transaction.status]}</p>
                 {message.transaction.status === "posted" && linkedReversal && <p className="mt-1 text-zinc-300">Reversal: {linkedReversal.suggestion.entry.id} · {statusLabels[linkedReversal.status]}</p>}
                 {message.transaction.status === "reversed" && <p className="mt-1 text-zinc-300">Reversed by transaction: {message.transaction.reversedByTransactionId}</p>}

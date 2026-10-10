@@ -36,6 +36,7 @@ describe("accounting suggestions in chat", () => {
     expect(html).toContain("Transaction");
     expect(html).toContain(transaction);
     expect(html).toContain("Suggested Journal Entry");
+    expect(html).toContain("Why this entry?");
     expect(html).toContain("Debit Rent Expense: 600 KWD");
     expect(html).toContain("Credit Bank: 600 KWD");
     expect(html).toContain("Awaiting approval");
@@ -130,6 +131,7 @@ describe("accounting suggestions in chat", () => {
 
     expect(html).toContain(">Draft</p>");
     expect(html).not.toContain("<button");
+    expect(html).not.toContain("Why this entry?");
   });
 
   it("shows missing-source clarification without an entry or approval status", async () => {
@@ -142,6 +144,7 @@ describe("accounting suggestions in chat", () => {
     expect(html).toContain("من أي حساب تم الدفع: البنك أم الصندوق؟");
     expect(html).toContain('dir="auto"');
     expect(html).not.toContain("Suggested Journal Entry");
+    expect(html).not.toContain("Why this entry?");
     expect(html).not.toContain("Awaiting approval");
   });
 
