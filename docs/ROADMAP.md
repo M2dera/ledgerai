@@ -110,7 +110,7 @@ Natural Language\
 
 ## 🚧 Phase 3 — Financial Statements
 
-In progress. The General Ledger and Trial Balance UIs are complete; the remaining financial statement interfaces are planned.
+In progress. The General Ledger, Trial Balance, and Profit & Loss UIs are complete; Balance Sheet and the accounting-driven Dashboard remain planned.
 
 Completed:
 
@@ -125,10 +125,14 @@ Completed:
 - Net account-balance totals, signed debit-minus-credit difference, and Balanced / Out of balance status supplied by the Accounting Core under its existing `1e-9` tolerance
 - Optional inclusive As of date filter that includes all earlier posted journal dates and preserves core calculation order
 - Explicit core-validated currency, helpful empty states, and safe rejection of invalid, mixed-currency, or nonfinite report data
+- Profit & Loss at `/profit-loss` with a sidebar navigation item and the same shared session ledger
+- Revenue, expenses, net profit or loss, and account code/name/classification/amount breakdown supplied by the existing Accounting Core `classifyProfitAndLoss` calculation
+- Chart of Accounts classifications determine the revenue and expense rows; signed balances, including negative amounts and offsetting posted reversals, are preserved
+- Inclusive start/end journal-date filters with either boundary optional, invalid-range validation, and all-posted reporting when both dates are blank
+- Whole-source currency and accounting validation before period filtering, explicit currency labels, accessible controls, responsive layout, and empty states for periods without posted revenue or expense activity
 
 Planned:
 
-- Profit & Loss UI
 - Balance Sheet UI
 - Accounting-driven Dashboard
 - Period filtering for the remaining financial statement interfaces
@@ -137,6 +141,8 @@ Planned:
 The General Ledger does not persist accounting data. Date-filtered account balances represent movement within the selected period, excluding opening balances. Running balances are omitted because the Accounting Core does not expose balances after each individual journal line.
 
 The Trial Balance is cumulative through the selected journal date, not a period-movement report. Missing or invalid posted journal dates prevent as-of reporting; the all-posted view remains available for valid accounting amounts. As-of reports use the current session's posted journals and their journal dates, not historical posting-time snapshots. Reversals use the original journal date unless edited before posting, so backdated postings and reversals can change an earlier as-of result. Accounting state remains in memory and clears on refresh.
+
+Profit & Loss reports movement within the selected inclusive journal-date period. Only entries in the posted session ledger contribute; drafts, awaiting-approval transactions, approved-but-unposted transactions, and unposted reversals do not. Posted originals and posted reversals both contribute, and their amounts offset when both journal dates fall within the period. Missing or invalid journal dates prevent period filtering; the all-posted report includes their valid amounts with a warning. Filtering is read-only and preserves the Accounting Core's existing precision and summation order. A period with no included entries retains the validated session currency, while an empty session has no established currency. Backdated postings and reversals can change earlier period results; this is not a historical posting-time snapshot. There is no persistence, and refreshing clears the session.
 
 ## ⏳ Phase 4 — AI Accountant
 
@@ -206,4 +212,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 in progress — General Ledger and Trial Balance UIs complete; Profit & Loss, Balance Sheet, and accounting-driven Dashboard interfaces remain planned.**
+**Current Status: Phase 3 in progress — General Ledger, Trial Balance, and Profit & Loss UIs complete; Balance Sheet and accounting-driven Dashboard interfaces remain planned.**
