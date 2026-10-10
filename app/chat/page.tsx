@@ -43,7 +43,25 @@ export default function ChatPage() {
         } finally {
           setBusy(false);
         }
-      }, { id: nextTransactionId("suggestion"), date });
+      }, {
+        id: nextTransactionId("suggestion"),
+        date,
+        requestTransactionInterpreter: async (description) => {
+          setBusy(true);
+          try {
+            const response = await fetch("/api/transaction-interpreter", {
+              method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+              body: JSON.stringify({ description }),
+            });
+            const payload: unknown = await response.json();
+            if (!response.ok) throw new Error("The local transaction interpreter is unavailable.");
+            if (!payload || typeof payload !== "object" || !("candidate" in payload)) throw new Error("Invalid transaction interpretation response");
+            return (payload as { candidate: unknown }).candidate;
+          } finally {
+            setBusy(false);
+          }
+        },
+      });
       if (result.route === "transaction") {
         const transaction = result.status === "suggested"
           ? createSuggestedTransaction(result.suggestion, captureAuditContext())

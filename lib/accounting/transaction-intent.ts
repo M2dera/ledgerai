@@ -121,7 +121,7 @@ function normalizeText(text: string): string {
 
 /** Recognizes an attempted clause, without asserting that its evidence resolves. */
 export function isTransactionStatement(description: string): boolean {
-  return /^(?:دفعت|دفعنا|استلمت|استلمنا|بعت|بعنا|شريت|اشتريت|ضخت|ضخيت|استثمرت|paid|we paid|received|we received|sold|we sold|bought|we bought|purchased|invested|we invested|injected)(?: |$)/u.test(normalizeText(description));
+  return /^(?:دفعت|دفعنا|استلمت|استلمنا|بعت|بعنا|شريت|اشتريت|ضخت|ضخيت|استثمرت|paid|we paid|received|we received|sold|we sold|bought|we bought|purchased|invested|we invested|injected|settled|we settled|paid off|covered|we covered|collected|we collected|acquired|we acquired|provided|we provided|transferred|we transferred|contributed|we contributed|owner invested|owner contributed|the owner invested|the owner contributed)(?: |$)/u.test(normalizeText(description));
 }
 
 function parseAmount(token: string): number | undefined {

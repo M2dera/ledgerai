@@ -157,17 +157,28 @@ The Dashboard shares the root `AccountingSessionProvider` and the Chat state's p
 
 Account rows link to `/ledger?accountId=<account-id>` using stable Chart of Accounts IDs. Profit & Loss links retain their inclusive `startDate` and `endDate`; Trial Balance and Balance Sheet as-of dates become the inclusive General Ledger `endDate`; Dashboard Cash/Bank links contain no date boundary. The General Ledger validates URL account IDs against the Chart of Accounts and initializes its existing account control; invalid or repeated account parameters show a safe error without displaying an unfiltered ledger. Users can change or clear the filter through the existing controls.
 
-## ⏳ Phase 4 — AI Accountant
+## 🚧 Phase 4 — AI Accountant
 
-Planned:
+In progress. The first task adds grounded AI-assisted interpretation for clear
+English transaction paraphrases while retaining deterministic Accounting Core
+validation and explicit approval.
+
+Completed:
+
+- The deterministic transaction parser remains first; already-resolved transactions do not call Ollama
+- Separate local Ollama transaction interpretation contract; the AI Analyst contract and validation remain unchanged
+- Exact quoted evidence validation against the original description and restricted intent/category/account mappings
+- Amounts and currencies are re-extracted and validated from the original input; the model cannot supply them
+- Accepted paraphrases pass through the existing Transaction Intent, Suggested Journal Entry, and Accounting Core validation path
+- Provider errors, timeouts, malformed output, missing facts, and conflicting evidence safely retain clarification behavior
+- Suggestions remain awaiting explicit approval; the AI path does not approve, post, or persist accounting state
+- Initial supported English paraphrases and trust boundaries documented in `docs/transaction-understanding.md`
+
+Remaining planned work:
 
 - Natural-language accounting interaction
-- AI-assisted transaction understanding
 - AI explains accounting treatment
 - AI suggests next actions
-- Deterministic accounting engine remains authoritative
-- AI cannot directly post transactions
-- User approval required before posting
 
 ## ⏳ Phase 5 — Documents
 

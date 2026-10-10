@@ -8,6 +8,7 @@ import { captureAuditContext, type AuditContext } from "@/lib/accounting/audit-t
 import type { JournalEntry } from "@/lib/accounting/types";
 import { routeFinancialQuestion, type AnalystRequestHandler, type ChatRoutingResult } from "@/lib/analysis/chat";
 import type { AnalystInterpretation } from "@/lib/ai/types";
+import { getMissingSettlementClarification, validateTransactionInterpretation } from "@/lib/accounting/transaction-understanding";
 import type { FinancialDataset, FinancialFactUnit } from "@/lib/financial/types";
 
 export type ChatMessage =
@@ -15,8 +16,10 @@ export type ChatMessage =
   | { sender: "ai"; text: string; transaction?: JournalTransaction; interpretation?: AnalystInterpretation; facts?: Array<{ label: string; value: number; unit: FinancialFactUnit }> };
 
 export type TransactionChatResult =
-  | { route: "transaction"; status: "suggested"; text: string; suggestion: SuggestedJournalEntry }
-  | { route: "transaction"; status: "unresolved" | "unsupported" | "rejected"; text: string; issues: readonly (TransactionIntentIssue | SuggestedJournalEntryIssue)[] };
+  | { route: "transaction"; status: "suggested"; text: string; suggestion: SuggestedJournalEntry; assisted?: boolean }
+  | { route: "transaction"; status: "unresolved" | "unsupported" | "rejected"; text: string; issues: readonly (TransactionIntentIssue | SuggestedJournalEntryIssue)[]; assisted?: boolean };
+
+export type TransactionInterpreterHandler = (description: string) => Promise<unknown>;
 
 export type ChatState = {
   messages: ChatMessage[];
@@ -144,14 +147,34 @@ export async function routeChatMessage(
   message: string,
   dataset: FinancialDataset | null,
   requestAnalyst: AnalystRequestHandler,
-  options: Pick<SuggestedJournalEntryOptions, "id" | "date">,
+  options: Pick<SuggestedJournalEntryOptions, "id" | "date"> & { requestTransactionInterpreter?: TransactionInterpreterHandler },
 ): Promise<ChatRoutingResult | TransactionChatResult> {
-  const parsed = parseTransactionIntent(message);
+  let parsed = parseTransactionIntent(message);
   if (parsed.status === "unsupported" && !isTransactionStatement(message) && !isUnsupportedTransactionAttempt(message)) {
     return routeFinancialQuestion(message, dataset, requestAnalyst);
   }
 
   const isArabic = /[\u0600-\u06ff]/u.test(message);
+  let assisted = false;
+  const monetaryEvidenceReady = parsed.intent.amount !== undefined && parsed.intent.currency !== undefined &&
+    !parsed.issues.some(({ code }) => ["MISSING_AMOUNT", "INVALID_AMOUNT", "AMBIGUOUS_AMOUNT", "MISSING_CURRENCY", "AMBIGUOUS_CURRENCY"].includes(code));
+  if (parsed.status !== "resolved" && monetaryEvidenceReady && isTransactionStatement(message) && options.requestTransactionInterpreter) {
+    try {
+      const candidate = await options.requestTransactionInterpreter(message);
+      const interpreted = validateTransactionInterpretation(candidate, message);
+      if (interpreted) {
+        parsed = { status: "resolved", intent: interpreted, issues: [] };
+        assisted = true;
+      } else {
+        const clarification = getMissingSettlementClarification(candidate, message);
+        if (clarification) {
+          parsed = { status: "unresolved", intent: parsed.intent, issues: [clarification] };
+        }
+      }
+    } catch {
+      // Provider failures preserve deterministic clarification; they never create a proposal.
+    }
+  }
   if (parsed.status !== "resolved") {
     return {
       route: "transaction",
@@ -164,7 +187,7 @@ export async function routeChatMessage(
   // suggestJournalEntry runs Accounting Core validation before returning a suggestion.
   const result = suggestJournalEntry(parsed.intent, options);
   if (result.status === "suggested") {
-    return { route: "transaction", status: "suggested", text: "Accounting suggestion", suggestion: result.suggestion };
+    return { route: "transaction", status: "suggested", text: assisted ? "AI-assisted draft for review" : "Accounting suggestion", suggestion: result.suggestion, ...(assisted ? { assisted: true } : {}) };
   }
   return {
     route: "transaction",
