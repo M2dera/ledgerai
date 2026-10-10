@@ -2,7 +2,7 @@ import { createAccountMap } from "./chart-of-accounts";
 import type { Account, AccountBalance, JournalEntry, LedgerTotals, TrialBalance } from "./types";
 import { assertValidJournalEntry } from "./validation";
 
-const BALANCE_TOLERANCE = 1e-9;
+export const BALANCE_TOLERANCE = 1e-9;
 
 export class MixedCurrencyLedgerError extends Error {
   constructor(readonly currencies: string[]) {

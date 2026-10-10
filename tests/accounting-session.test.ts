@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountingSessionProvider, useAccountingSession } from "@/components/providers/AccountingSessionProvider";
 import { createSuggestedTransaction } from "@/lib/accounting/transaction-workflow";
 import { approveChatTransaction, postChatTransaction, reverseChatTransaction, routeChatMessage } from "@/lib/chat";
+import { getBalanceSheetReport } from "@/lib/balance-sheet";
 import { getProfitLossReport, type ProfitLossFilters } from "@/lib/profit-loss";
 import { getTrialBalanceReport } from "@/lib/trial-balance";
 
@@ -67,6 +68,14 @@ function ProfitLossRoute(filters: ProfitLossFilters = {}) {
   return createElement("p", null, `${profitAndLoss.totalRevenue} ${currency} revenue; ${profitAndLoss.totalExpenses} ${currency} expenses; ${profitAndLoss.netIncome} ${currency} net profit / loss`);
 }
 
+function BalanceSheetRoute(asOfDate = "") {
+  const { chat } = useAccountingSession();
+  const report = getBalanceSheetReport(chat.ledger, asOfDate);
+  if (report.status !== "ready") throw new Error(report.message);
+  const { balanceSheet, currency } = report;
+  return createElement("p", null, `${balanceSheet.totalAssets} ${currency} assets; ${balanceSheet.totalLiabilities} ${currency} liabilities; ${balanceSheet.totalEquity} ${currency} equity; ${balanceSheet.currentEarnings} ${currency} current earnings; ${balanceSheet.balanced ? "Balanced" : "Out of balance"}`);
+}
+
 function mountedSession() {
   const frame: HookFrame = { values: [], cursor: 0 };
   return {
@@ -95,7 +104,7 @@ describe("shared accounting session", () => {
     expect(html).toContain("Refreshing the page clears chat and the session ledger");
   });
 
-  it("retains the same session through Chat, General Ledger, Trial Balance, filtered Profit & Loss, and back to Chat", async () => {
+  it("retains the same session through Chat, General Ledger, Trial Balance, Profit & Loss, Balance Sheet, and back to Chat", async () => {
     const storage = { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn() };
     vi.stubGlobal("window", { localStorage: storage, sessionStorage: storage });
     vi.stubGlobal("localStorage", storage);
@@ -142,6 +151,17 @@ describe("shared accounting session", () => {
     expect(filtered.session.chat).toBe(posted);
     expect(filtered.session.chat).toEqual(snapshot);
 
+    const balanceSheet = mounted.render(BalanceSheetRoute);
+    expect(balanceSheet.html).toContain("-700.125 KWD assets; 0 KWD liabilities; -700.125 KWD equity; -700.125 KWD current earnings; Balanced");
+    expect(balanceSheet.session.chat).toBe(posted);
+    expect(balanceSheet.session.chat.ledger).toBe(posted.ledger);
+    expect(balanceSheet.session.chat.ledger.balances).toBe(balances);
+    expect(balanceSheet.session.chat).toEqual(snapshot);
+    const asOf = mounted.render(() => BalanceSheetRoute("2026-10-08"));
+    expect(asOf.html).toContain("0 KWD assets; 0 KWD liabilities; 0 KWD equity; 0 KWD current earnings; Balanced");
+    expect(asOf.session.chat).toBe(posted);
+    expect(asOf.session.chat).toEqual(snapshot);
+
     const returned = mounted.render(ChatRoute);
     expect(returned.session.chat).toBe(posted);
     expect(returned.session.chat.ledger).toBe(posted.ledger);
@@ -155,7 +175,7 @@ describe("shared accounting session", () => {
     for (const method of Object.values(storage)) expect(method).not.toHaveBeenCalled();
   });
 
-  it("keeps Profit & Loss consistent with shared reversal posting and preserves audit history through report navigation", async () => {
+  it("keeps Profit & Loss and Balance Sheet consistent with shared reversal posting and preserves audit history through navigation", async () => {
     const mounted = mountedSession();
     const first = mounted.render(ChatRoute).session;
     const id = first.nextTransactionId("suggestion");
@@ -168,21 +188,25 @@ describe("shared accounting session", () => {
     first.setChat((current) => postChatTransaction(current, id, audit));
     const original = mounted.render(ProfitLossRoute);
     expect(original.html).toContain("700.125 KWD expenses; -700.125 KWD net profit / loss");
+    expect(mounted.render(BalanceSheetRoute).html).toContain("-700.125 KWD assets; 0 KWD liabilities; -700.125 KWD equity; -700.125 KWD current earnings; Balanced");
     const reversalId = original.session.nextTransactionId("reversal");
     original.session.setChat((current) => reverseChatTransaction(current, id, reversalId, audit));
     const pending = mounted.render(ProfitLossRoute);
     expect(pending.html).toContain("700.125 KWD expenses; -700.125 KWD net profit / loss");
+    expect(mounted.render(BalanceSheetRoute).html).toContain("-700.125 KWD assets; 0 KWD liabilities; -700.125 KWD equity; -700.125 KWD current earnings; Balanced");
     expect(pending.session.chat.ledger.journalEntries).toHaveLength(1);
     pending.session.setChat((current) => ({ ...current, messages: approveChatTransaction(current.messages, reversalId, audit) }));
     const approved = mounted.render(ProfitLossRoute);
     expect(approved.html).toContain("700.125 KWD expenses; -700.125 KWD net profit / loss");
+    expect(mounted.render(BalanceSheetRoute).html).toContain("-700.125 KWD assets; 0 KWD liabilities; -700.125 KWD equity; -700.125 KWD current earnings; Balanced");
     approved.session.setChat((current) => postChatTransaction(current, reversalId, audit));
     const posted = mounted.render(ProfitLossRoute);
     expect(posted.html).toContain("0 KWD revenue; 0 KWD expenses; 0 KWD net profit / loss");
+    expect(mounted.render(BalanceSheetRoute).html).toContain("0 KWD assets; 0 KWD liabilities; 0 KWD equity; 0 KWD current earnings; Balanced");
     expect(posted.session.chat.ledger.journalEntries.map((entry) => entry.id)).toEqual([id, reversalId]);
     const chat = posted.session.chat;
     const snapshot = structuredClone(chat);
-    for (const Route of [LedgerRoute, TrialBalanceRoute, () => ProfitLossRoute({ startDate: "2026-10-08", endDate: "2026-10-08" }), ChatRoute]) {
+    for (const Route of [LedgerRoute, TrialBalanceRoute, () => ProfitLossRoute({ startDate: "2026-10-08", endDate: "2026-10-08" }), BalanceSheetRoute, () => BalanceSheetRoute("2026-10-08"), ChatRoute]) {
       const navigated = mounted.render(Route);
       expect(navigated.session.chat).toBe(chat);
       expect(navigated.session.chat.ledger).toBe(chat.ledger);

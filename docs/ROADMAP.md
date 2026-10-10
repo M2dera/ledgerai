@@ -110,7 +110,7 @@ Natural Language\
 
 ## 🚧 Phase 3 — Financial Statements
 
-In progress. The General Ledger, Trial Balance, and Profit & Loss UIs are complete; Balance Sheet and the accounting-driven Dashboard remain planned.
+In progress. The General Ledger, Trial Balance, Profit & Loss, and Balance Sheet UIs are complete; the accounting-driven Dashboard remains planned.
 
 Completed:
 
@@ -130,12 +130,16 @@ Completed:
 - Chart of Accounts classifications determine the revenue and expense rows; signed balances, including negative amounts and offsetting posted reversals, are preserved
 - Inclusive start/end journal-date filters with either boundary optional, invalid-range validation, and all-posted reporting when both dates are blank
 - Whole-source currency and accounting validation before period filtering, explicit currency labels, accessible controls, responsive layout, and empty states for periods without posted revenue or expense activity
+- Balance Sheet at `/balance-sheet` with a sidebar navigation item and the same shared session ledger
+- Separate Assets, Liabilities, and Equity sections classified by Chart of Accounts types, including zero and signed negative balances
+- Pure Accounting Core `createBalanceSheetStatement` reuses the existing Balance Sheet classification and Profit & Loss calculation without changing existing statement snapshots or posting behavior
+- Transparent Current earnings / Net income line from the same cumulative journals, an equity-account subtotal, and total equity including those earnings; no balancing plug or closing journal
+- Total assets, total liabilities, total equity, liabilities plus equity, and the actual signed equation difference, with Balanced / Out of balance status under the existing inclusive `1e-9` tolerance
+- Optional inclusive As of journal-date filter, complete-source currency and numeric validation, clear empty/error states, explicit currency, and accessible responsive controls and account tables
 
 Planned:
 
-- Balance Sheet UI
 - Accounting-driven Dashboard
-- Period filtering for the remaining financial statement interfaces
 - Account-level drill-down beyond the General Ledger account filter
 
 The General Ledger does not persist accounting data. Date-filtered account balances represent movement within the selected period, excluding opening balances. Running balances are omitted because the Accounting Core does not expose balances after each individual journal line.
@@ -143,6 +147,8 @@ The General Ledger does not persist accounting data. Date-filtered account balan
 The Trial Balance is cumulative through the selected journal date, not a period-movement report. Missing or invalid posted journal dates prevent as-of reporting; the all-posted view remains available for valid accounting amounts. As-of reports use the current session's posted journals and their journal dates, not historical posting-time snapshots. Reversals use the original journal date unless edited before posting, so backdated postings and reversals can change an earlier as-of result. Accounting state remains in memory and clears on refresh.
 
 Profit & Loss reports movement within the selected inclusive journal-date period. Only entries in the posted session ledger contribute; drafts, awaiting-approval transactions, approved-but-unposted transactions, and unposted reversals do not. Posted originals and posted reversals both contribute, and their amounts offset when both journal dates fall within the period. Missing or invalid journal dates prevent period filtering; the all-posted report includes their valid amounts with a warning. Filtering is read-only and preserves the Accounting Core's existing precision and summation order. A period with no included entries retains the validated session currency, while an empty session has no established currency. Backdated postings and reversals can change earlier period results; this is not a historical posting-time snapshot. There is no persistence, and refreshing clears the session.
+
+The Balance Sheet is cumulative through the selected inclusive journal date, or includes all posted journals when the date is blank. Current earnings mean revenue minus expenses from the current session's posted journals through that same cutoff; there is no fiscal-year boundary or period-close operation. Total equity equals the classified equity-account balances plus the separately displayed current earnings. The report checks `assets - (liabilities + total equity)` against the existing absolute `1e-9` tolerance and retains the actual difference, including differences within tolerance. Account balances are never clamped or adjusted to force the equation to balance. Posted originals and posted reversals both contribute; pending reversals and other unposted transactions do not. Viewing and filtering preserve session transactions, workflow, audit events, and ledger snapshots. Missing or invalid journal dates block as-of reporting while valid all-posted amounts remain available with a warning. Currency validation applies to the complete posted source before filtering; an empty cutoff retains the validated session currency, and an empty session has no established currency. Backdated postings and reversals may change earlier as-of results, which are based on the current posted journals rather than historical posting-time snapshots. Refreshing clears the session; there is no persistence.
 
 ## ⏳ Phase 4 — AI Accountant
 
@@ -212,4 +218,4 @@ Future scope:
 5. Keep accounting logic independent from UI and AI providers.
 6. Complete the current phase before adding unrelated features.
 
-**Current Status: Phase 3 in progress — General Ledger, Trial Balance, and Profit & Loss UIs complete; Balance Sheet and accounting-driven Dashboard interfaces remain planned.**
+**Current Status: Phase 3 in progress — General Ledger, Trial Balance, Profit & Loss, and Balance Sheet UIs complete; the accounting-driven Dashboard remains planned.**

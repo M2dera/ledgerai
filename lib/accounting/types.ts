@@ -93,3 +93,14 @@ export type BalanceSheetClassification = {
   totalLiabilities: number;
   totalEquity: number;
 };
+
+/** Statement equity includes separately disclosed earnings without changing any journal account balance. */
+export type BalanceSheetStatement = BalanceSheetClassification & {
+  totalAccountEquity: number;
+  currentEarnings: number;
+  totalLiabilitiesAndEquity: number;
+  /** Assets minus liabilities and equity, using the Core's unrounded account balances. */
+  difference: number;
+  balanced: boolean;
+  balanceTolerance: number;
+};

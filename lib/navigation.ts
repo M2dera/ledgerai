@@ -5,6 +5,7 @@ export const mainNavigation = [
   { label: "General Ledger", href: "/ledger" },
   { label: "Trial Balance", href: "/trial-balance" },
   { label: "Profit & Loss", href: "/profit-loss" },
+  { label: "Balance Sheet", href: "/balance-sheet" },
 ] as const;
 
 export function isNavigationActive(pathname: string, href: string): boolean {

@@ -10,8 +10,9 @@ describe("main app navigation", () => {
       { label: "General Ledger", href: "/ledger" },
       { label: "Trial Balance", href: "/trial-balance" },
       { label: "Profit & Loss", href: "/profit-loss" },
+      { label: "Balance Sheet", href: "/balance-sheet" },
     ]);
-    for (const route of ["/", "/dashboard", "/chat", "/ledger", "/trial-balance", "/profit-loss"]) {
+    for (const route of ["/", "/dashboard", "/chat", "/ledger", "/trial-balance", "/profit-loss", "/balance-sheet"]) {
       expect(mainNavigation.filter(({ href }) => isNavigationActive(route, href))).toHaveLength(1);
     }
     expect(isNavigationActive("/dashboard", "/chat")).toBe(false);
